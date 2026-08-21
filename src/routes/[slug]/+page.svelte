@@ -2,7 +2,6 @@
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
-	import Footer from '$lib/components/Footer.svelte';
 	import { createBrandColors } from '$lib/utils/colorUtils';
 	import { detectTimezone, getTimezoneLabel, getTimezoneWithTime, TIMEZONE_LABELS } from '$lib/constants/timezones';
 	import { formatDateLocal, formatSelectedDate, createFormatters } from '$lib/utils/dateFormatters';
@@ -272,7 +271,7 @@
 
 <!-- ===== USER STYLE ANCHOR: booking-page-layout-wrapper ===== -->
 <div
-	class="min-h-screen bg-bg text-text font-serif flex flex-col items-center md:justify-center md:p-gutter"
+	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center md:justify-center md:p-gutter"
 	style="--brand-color: {brandColor}; --brand-light: {brandDark}; --brand-lighter: {brandLighter}; --brand-dark: {brandDark}; --brand-rgb: {colors.rgb.r}, {colors.rgb.g}, {colors.rgb.b};"
 >
 	{#if bookingStatus === 'success'}
@@ -287,7 +286,6 @@
 			{formatTimeRange}
 			{formatSelectedDate}
 		/>
-		<Footer class="mt-6" />
 	{:else}
 		<!-- MOBILE LAYOUT (< 768px) - Full white page -->
 		<div class="md:hidden min-h-screen w-full bg-bg">
@@ -527,8 +525,6 @@
 				</div>
 			{/if}
 
-			<!-- Mobile Footer -->
-			<Footer class="px-6 pb-8" />
 		</div>
 
 		<!-- DESKTOP LAYOUT (>= 768px) -->
@@ -572,7 +568,6 @@
 								{brandColor}
 								{brandLighter}
 								{brandDark}
-								themed
 								onDateSelect={handleDateSelect}
 								onPrevMonth={prevMonth}
 								onNextMonth={nextMonth}
@@ -622,6 +617,5 @@
 			</div>
 		</div>
 
-		<Footer class="mt-6" />
 	{/if}
 </div>

@@ -60,6 +60,40 @@ Sections:
 	}
 }
 
+@layer components {
+	/* ===== USER STYLE ANCHOR: public-flow-typography =====
+	   Shared typography rules for the visitor-facing flow (homepage, booking,
+	   cancel, reschedule, reschedule-response). Applied once via the
+	   ".public-flow" class on each page's outermost wrapper -- mirrors
+	   blog-cssgrid.css's responsive body copy and heading treatment. Not
+	   applied globally so the dashboard (out of scope, still vanilla) is
+	   untouched. */
+	.public-flow {
+		font-size: var(--text-body);
+		line-height: 160%;
+	}
+
+	@media (max-width: 576px) {
+		.public-flow {
+			font-size: var(--text-body-mobile);
+			line-height: 145%;
+		}
+	}
+
+	.public-flow :is(h1, h2, h3, h4, h5, h6) {
+		text-rendering: optimizeLegibility;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	.public-flow h1 {
+		margin-top: 30px;
+	}
+
+	.public-flow h2 {
+		margin-top: 10px;
+	}
+}
+
 @layer utilities {
 	.animate-fade-in {
 		animation: fadeIn 0.3s ease-in-out;

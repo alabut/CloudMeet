@@ -11,11 +11,6 @@
 		onDateSelect: (dateStr: string) => void;
 		onPrevMonth: () => void;
 		onNextMonth: () => void;
-		// Opt-in dark/light theme styling for the public booking page (see
-		// docs/STYLE-MAP.md). Defaults to false so the reschedule page -- the
-		// other call site, out of scope for this restyle and still on a plain
-		// white background -- keeps its original untouched appearance.
-		themed?: boolean;
 	}
 
 	let {
@@ -27,8 +22,7 @@
 		brandDark,
 		onDateSelect,
 		onPrevMonth,
-		onNextMonth,
-		themed = false
+		onNextMonth
 	}: Props = $props();
 
 	const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -87,15 +81,15 @@
 <!-- ===== USER STYLE ANCHOR: availability-slot-picker (calendar) ===== -->
 <div>
 	<div class="flex items-center justify-between mb-4">
-		<h3 class={themed ? 'font-meta text-extrasmall uppercase tracking-wide text-text-secondary' : 'text-lg font-medium text-gray-900'}>{formatMonthYear(currentMonth)}</h3>
+		<h3 class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary">{formatMonthYear(currentMonth)}</h3>
 		<div class="flex gap-2">
-			<button onclick={onPrevMonth} class="p-2 rounded-full transition {themed ? 'hover:bg-bg-secondary' : 'hover:bg-gray-100'}" aria-label="Previous month">
-				<svg class="w-5 h-5 {themed ? 'text-text-secondary' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<button onclick={onPrevMonth} class="p-2 rounded-full transition hover:bg-bg-secondary" aria-label="Previous month">
+				<svg class="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
 				</svg>
 			</button>
-			<button onclick={onNextMonth} class="p-2 rounded-full transition {themed ? 'hover:bg-bg-secondary' : 'hover:bg-gray-100'}" aria-label="Next month">
-				<svg class="w-5 h-5 {themed ? 'text-text-secondary' : 'text-gray-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<button onclick={onNextMonth} class="p-2 rounded-full transition hover:bg-bg-secondary" aria-label="Next month">
+				<svg class="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
 				</svg>
 			</button>
@@ -104,7 +98,7 @@
 
 	<div class="grid grid-cols-7 gap-1 mb-2">
 		{#each weekDays as day}
-			<div class="text-center py-2 {themed ? 'font-meta text-extrasmall uppercase tracking-wide text-text-secondary' : 'text-xs font-medium text-gray-500'}">{day}</div>
+			<div class="text-center py-2 font-meta text-extrasmall uppercase tracking-wide text-text-secondary">{day}</div>
 		{/each}
 	</div>
 
@@ -117,13 +111,12 @@
 				type="button"
 				onclick={() => isClickable && onDateSelect(day.dateStr)}
 				disabled={!isClickable}
-				class="aspect-square flex items-center justify-center text-sm rounded-full transition relative
-					{!day.isCurrentMonth ? (themed ? 'text-text-secondary opacity-40' : 'text-gray-300') : ''}
+				class="aspect-square flex items-center justify-center text-sm rounded-full transition relative text-text-secondary
+					{!day.isCurrentMonth ? 'opacity-40' : ''}
 					{isClickable && !isSelected ? 'font-semibold cursor-pointer' : ''}
-					{day.isAvailable && !hasSlots && day.isCurrentMonth ? (themed ? 'text-text-secondary' : 'text-gray-400') : ''}
-					{!day.isAvailable && day.isCurrentMonth ? (themed ? 'text-text-secondary opacity-40 cursor-not-allowed' : 'text-gray-300 cursor-not-allowed') : ''}
+					{!day.isAvailable && day.isCurrentMonth ? 'opacity-40 cursor-not-allowed' : ''}
 					{isSelected ? 'text-white' : ''}"
-				style="{isClickable && !isSelected ? `background-color: ${brandLighter}; color: ${themed ? 'var(--accent)' : brandDark}` : ''}{isSelected ? `background-color: ${brandColor}` : ''}"
+				style="{isClickable && !isSelected ? `background-color: ${brandLighter}; color: var(--accent)` : ''}{isSelected ? `background-color: ${brandColor}` : ''}"
 			>
 				{day.date.getDate()}
 			</button>

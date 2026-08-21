@@ -6,11 +6,12 @@
 		onSelect: (tz: string) => void;
 		onClose: () => void;
 		brandColor?: string;
-		// Opt-in dark/light theme styling for the public booking page (see
-		// docs/STYLE-MAP.md). Defaults to false so the two other call sites --
-		// the host dashboard's availability page and the reschedule page, both
-		// out of scope for this restyle and still on a plain white background --
-		// keep their original untouched appearance.
+		// Opt-in dark/light theme styling for the public visitor flow (see
+		// docs/STYLE-MAP.md). Defaults to false so the host dashboard's
+		// availability page -- the one remaining call site that's out of scope
+		// for this restyle and still on a plain white background -- keeps its
+		// original untouched appearance. Every other call site (booking page,
+		// reschedule page) now passes themed explicitly.
 		themed?: boolean;
 	}
 

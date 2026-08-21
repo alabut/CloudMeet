@@ -2,7 +2,6 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
 	import type { PageData, ActionData } from './$types';
-	import Footer from '$lib/components/Footer.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -36,13 +35,13 @@
 	<title>Cancel Booking</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 py-12">
-	<div class="max-w-2xl mx-auto px-4">
+<div class="public-flow min-h-screen bg-bg text-text font-serif py-12">
+	<div class="max-w-2xl mx-auto px-gutter">
 		{#if success || data.alreadyCanceled}
 			<!-- Success Message -->
-			<div class="bg-white rounded-lg shadow-lg p-8 text-center">
-				<div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-					<svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<div class="bg-surface rounded-large border border-border shadow-lg p-8 text-center">
+				<div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background-color: var(--bg-secondary)">
+					<svg class="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
@@ -51,54 +50,54 @@
 						></path>
 					</svg>
 				</div>
-				<h1 class="text-2xl font-bold text-gray-900 mb-2">Booking Cancelled</h1>
-				<p class="text-gray-600 mb-6">
+				<h1 class="font-display text-2xl font-medium text-text mb-2">Booking Cancelled</h1>
+				<p class="text-text-secondary mb-6">
 					Your meeting has been cancelled successfully. The host has been notified.
 				</p>
 				<a
 					href="/{data.booking.event_slug}"
-					class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+					class="inline-block px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-large transition"
 				>
 					Book Another Meeting
 				</a>
 			</div>
 		{:else}
 			<!-- Cancellation Form -->
-			<div class="bg-white rounded-lg shadow-lg p-8">
-				<h1 class="text-2xl font-bold text-gray-900 mb-6">Cancel Booking</h1>
+			<div class="bg-surface rounded-large border border-border shadow-lg p-8">
+				<h1 class="font-display text-2xl font-medium text-text mb-6">Cancel Booking</h1>
 
 				{#if form?.error}
-					<div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
+					<div class="bg-red-500/10 border border-red-500/30 text-red-400 rounded-large p-4 mb-6">
 						Error: {form.error}
 					</div>
 				{/if}
 
-				<div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
-					<h2 class="font-semibold text-gray-900 mb-4">Booking Details</h2>
+				<div class="border border-border rounded-large p-6 mb-6" style="background-color: var(--bg-secondary)">
+					<h2 class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-4">Booking Details</h2>
 					<div class="space-y-2 text-sm">
 						<div>
-							<span class="text-gray-600">Event:</span>
-							<span class="ml-2 text-gray-900 font-medium">{data.booking.event_name}</span>
+							<span class="text-text-secondary">Event:</span>
+							<span class="ml-2 text-text font-medium">{data.booking.event_name}</span>
 						</div>
 						<div>
-							<span class="text-gray-600">With:</span>
-							<span class="ml-2 text-gray-900 font-medium">{data.booking.host_name}</span>
+							<span class="text-text-secondary">With:</span>
+							<span class="ml-2 text-text font-medium">{data.booking.host_name}</span>
 						</div>
 						<div>
-							<span class="text-gray-600">Time:</span>
-							<span class="ml-2 text-gray-900 font-medium"
+							<span class="text-text-secondary">Time:</span>
+							<span class="ml-2 text-text font-medium"
 								>{formatDateTime(data.booking.start_time)}</span
 							>
 						</div>
 						<div>
-							<span class="text-gray-600">Attendee:</span>
-							<span class="ml-2 text-gray-900 font-medium">{data.booking.attendee_name}</span>
+							<span class="text-text-secondary">Attendee:</span>
+							<span class="ml-2 text-text font-medium">{data.booking.attendee_name}</span>
 						</div>
 					</div>
 				</div>
 
 				<div class="mb-6">
-					<label for="reason" class="block text-sm font-medium text-gray-700 mb-2">
+					<label for="reason" class="block text-sm font-medium text-text mb-2">
 						Reason for cancellation (optional)
 					</label>
 					<textarea
@@ -106,13 +105,13 @@
 						name="reason"
 						bind:value={reason}
 						rows="3"
-						class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+						class="w-full px-3 py-2 bg-bg-secondary border border-border rounded-large text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none text-sm"
 						placeholder="Let the host know why you're cancelling..."
 					></textarea>
 				</div>
 
-				<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-					<p class="text-sm text-yellow-800">
+				<div class="border border-accent/30 rounded-large p-4 mb-6" style="background-color: color-mix(in srgb, var(--accent) 10%, transparent)">
+					<p class="text-sm text-text">
 						<strong>Warning:</strong> This action cannot be undone. The host will be notified of the cancellation.
 					</p>
 				</div>
@@ -123,13 +122,13 @@
 						<button
 							type="submit"
 							disabled={cancelling}
-							class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 font-medium"
+							class="flex-1 px-6 py-3 bg-red-600 text-white rounded-large hover:bg-red-700 transition disabled:opacity-50 font-medium"
 						>
 							{cancelling ? 'Cancelling...' : 'Yes, Cancel Booking'}
 						</button>
 						<a
 							href="/{data.booking.event_slug}"
-							class="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-center font-medium"
+							class="flex-1 px-6 py-3 border border-border text-text rounded-large hover:border-accent transition text-center font-medium"
 						>
 							Keep Booking
 						</a>
@@ -137,7 +136,5 @@
 				</form>
 			</div>
 		{/if}
-
-		<Footer class="mt-6" />
 	</div>
 </div>
