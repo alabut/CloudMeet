@@ -24,6 +24,7 @@
 	const meetingLabel = meetingType === 'teams' ? 'Join Microsoft Teams Meeting' : 'Join Google Meet';
 </script>
 
+<!-- ===== USER STYLE ANCHOR: confirmation-view ===== -->
 <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8 max-w-md w-full mx-2">
 	<div class="text-center">
 		<div class="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">

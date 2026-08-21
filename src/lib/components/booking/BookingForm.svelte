@@ -22,6 +22,7 @@
 	}: Props = $props();
 </script>
 
+<!-- ===== USER STYLE ANCHOR: booking-form ===== -->
 <div class="max-w-md">
 	<h2 class="text-xl font-semibold text-gray-900 mb-6">Enter Details</h2>
 

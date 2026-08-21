@@ -78,6 +78,7 @@
 	}
 </script>
 
+<!-- ===== USER STYLE ANCHOR: availability-slot-picker (calendar) ===== -->
 <div>
 	<div class="flex items-center justify-between mb-4">
 		<h3 class="text-lg font-medium text-gray-900">{formatMonthYear(currentMonth)}</h3>

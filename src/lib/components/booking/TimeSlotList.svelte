@@ -29,6 +29,7 @@
 	}: Props = $props();
 </script>
 
+<!-- ===== USER STYLE ANCHOR: availability-slot-picker (time slots) ===== -->
 <div class="w-52 ml-6 border-l border-gray-200 pl-6 flex flex-col" style="max-height: 400px;">
 	<h3 class="text-sm font-medium text-gray-500 mb-4 flex-shrink-0">
 		{formatSelectedDate(selectedDate).split(',')[0]}

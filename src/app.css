@@ -1,8 +1,10 @@
+/* ===== USER STYLE ANCHOR: global-css-entry ===== */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+	/* ===== USER STYLE ANCHOR: theme-tokens ===== */
 	:root {
 		--color-primary: theme('colors.blue.600');
 		--color-primary-hover: theme('colors.blue.700');
