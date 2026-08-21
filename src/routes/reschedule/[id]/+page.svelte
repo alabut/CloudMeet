@@ -201,9 +201,12 @@
 		</div>
 	{:else}
 		<!-- Reschedule Form - matching main booking page layout -->
-		<div class="bg-bg border border-border rounded-large shadow-lg overflow-hidden flex transition-all duration-300 ease-in-out" style="width: {selectedDate ? '920px' : '650px'}">
+		<div
+			class="reschedule-card w-full bg-bg border border-border rounded-large shadow-lg overflow-hidden flex flex-col md:flex-row transition-all duration-300 ease-in-out"
+			style="--card-width: {selectedDate ? '920px' : '650px'}"
+		>
 			<!-- Left Sidebar -->
-			<div class="w-72 border-r border-border flex flex-col flex-shrink-0">
+			<div class="w-full md:w-72 border-b md:border-b-0 md:border-r border-border flex flex-col flex-shrink-0">
 				{#if data.booking.coverImage}
 					<div class="p-6 pb-4 flex justify-center">
 						<img src={data.booking.coverImage} alt="" class="max-h-16 w-auto object-contain" />
@@ -269,8 +272,8 @@
 					</div>
 				{/if}
 
-				<div class="flex items-stretch">
-					<div class="w-80">
+				<div class="flex flex-col md:flex-row md:items-stretch">
+					<div class="w-full md:w-80">
 						<h2 class="font-display text-xl font-medium text-text mb-6">Select a New Date & Time</h2>
 
 						<BookingCalendar
@@ -314,7 +317,7 @@
 					</div>
 
 					{#if selectedDate}
-						<div class="w-52 ml-6 border-l border-border pl-6 flex flex-col" style="max-height: 400px;">
+						<div class="w-full md:w-52 mt-6 md:mt-0 md:ml-6 border-t md:border-t-0 md:border-l border-border pt-6 md:pt-0 md:pl-6 flex flex-col" style="max-height: 400px;">
 							<h3 class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-4 flex-shrink-0">
 								{formatSelectedDate(selectedDate).split(',')[0]}
 							</h3>
@@ -373,3 +376,14 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	/* Below md, the card stays fluid (w-full) so it never overflows a
+	   narrow viewport. At md and up, restore the exact fixed-width
+	   animation that was previously applied unconditionally. */
+	@media (min-width: 768px) {
+		.reschedule-card {
+			width: var(--card-width);
+		}
+	}
+</style>
