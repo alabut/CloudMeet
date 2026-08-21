@@ -6,6 +6,7 @@ import { redirect, fail, error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getCurrentUser } from '$lib/server/auth';
 import { validateLength, validateFields, MAX_LENGTHS } from '$lib/server/validation';
+import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
 
 export const load: PageServerLoad = async (event) => {
 	const userId = await getCurrentUser(event);
@@ -88,6 +89,7 @@ export const actions: Actions = {
 		if (!db) {
 			return fail(500, { error: 'Database not available' });
 		}
+		const kv = event.platform?.env?.KV;
 
 		const eventTypeId = event.params.id;
 
@@ -167,6 +169,12 @@ export const actions: Actions = {
 					userId
 				)
 				.run();
+
+			// Duration, slug or active state may have changed - stale cached
+			// availability would otherwise answer for up to 5 minutes
+			if (kv) {
+				await invalidateAvailabilityCache(kv);
+			}
 
 			throw redirect(302, '/dashboard');
 		} catch (error: any) {

@@ -6,6 +6,7 @@ import { redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getCurrentUser } from '$lib/server/auth';
 import { validateLength, validateFields, MAX_LENGTHS } from '$lib/server/validation';
+import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
 
 export const load: PageServerLoad = async (event) => {
 	const userId = await getCurrentUser(event);
@@ -66,6 +67,7 @@ export const actions: Actions = {
 		if (!db) {
 			return fail(500, { error: 'Database not available' });
 		}
+		const kv = event.platform?.env?.KV;
 
 		const formData = await event.request.formData();
 		const name = formData.get('name');
@@ -118,6 +120,12 @@ export const actions: Actions = {
 				)
 				.bind(userId, name, slugStr, parseInt(duration.toString()), description, isActive ? 1 : 0, coverImage, availabilityCalendars, inviteCalendar)
 				.run();
+
+			// A new event type changes what's bookable - stale cached
+			// availability would otherwise answer for up to 5 minutes
+			if (kv) {
+				await invalidateAvailabilityCache(kv);
+			}
 
 			throw redirect(302, '/dashboard');
 		} catch (error: any) {
