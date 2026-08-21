@@ -133,9 +133,9 @@
 
 	<div class="space-y-4">
 		<!-- Google Calendar -->
-		<div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-			<div class="flex items-center gap-3">
-				<div class="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm">
+		<div class="flex flex-wrap items-center justify-between gap-3 p-4 bg-gray-50 rounded-lg">
+			<div class="flex items-center gap-3 min-w-0">
+				<div class="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm shrink-0">
 					<!-- Google Calendar icon -->
 					<svg class="w-6 h-6" viewBox="0 0 512 512" fill="none">
 						<path d="M390.736 121.264H121.264V390.736H390.736V121.264Z" fill="white"/>
@@ -162,9 +162,9 @@
 		</div>
 
 		<!-- Outlook Calendar -->
-		<div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-			<div class="flex items-center gap-3">
-				<div class="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm">
+		<div class="flex flex-wrap items-center justify-between gap-3 p-4 bg-gray-50 rounded-lg">
+			<div class="flex items-center gap-3 min-w-0">
+				<div class="w-10 h-10 flex items-center justify-center bg-white rounded-lg shadow-sm shrink-0">
 					<!-- Microsoft Outlook icon -->
 					<svg class="w-6 h-6" viewBox="0 0 48 48">
 						<path fill="#40c4ff" d="M31.323,8.502L7.075,23.872l-2.085-3.29v-2.835c0-1.032,0.523-1.994,1.389-2.556l14.095-9.146c2.147-1.393,4.914-1.394,7.061-0.001L31.323,8.502z"/>

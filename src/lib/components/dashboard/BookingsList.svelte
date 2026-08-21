@@ -70,13 +70,13 @@
 		{#if sortedBookings().length > 0}
 			{#each sortedBookings() as booking}
 				<div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-					<div class="flex justify-between items-start mb-2">
-						<div>
+					<div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start mb-2">
+						<div class="min-w-0">
 							<h3 class="font-semibold text-gray-900">{booking.event_type_name}</h3>
 							<p class="text-sm text-gray-600">{booking.attendee_name}</p>
-							<p class="text-xs text-gray-500">{booking.attendee_email}</p>
+							<p class="text-xs text-gray-500 break-all">{booking.attendee_email}</p>
 						</div>
-						<div class="flex items-center gap-2">
+						<div class="flex flex-wrap items-center gap-2">
 							<span class="px-2 py-1 text-xs rounded-full {getStatusColor(booking.status)}">
 								{booking.status}
 							</span>

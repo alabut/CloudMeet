@@ -30,8 +30,8 @@
 		{#if eventTypes && eventTypes.length > 0}
 			{#each eventTypes as eventType}
 				<div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-					<div class="flex justify-between items-start mb-2">
-						<div>
+					<div class="flex flex-wrap justify-between items-start gap-2 mb-2">
+						<div class="min-w-0">
 							<h3 class="font-semibold text-gray-900">{eventType.name}</h3>
 							<p class="text-sm text-gray-600">{eventType.duration} minutes</p>
 						</div>

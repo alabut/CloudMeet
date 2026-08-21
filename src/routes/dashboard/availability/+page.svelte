@@ -91,7 +91,7 @@
 	<!-- Header -->
 	<header class="bg-white shadow-sm">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-			<div class="flex items-center gap-4">
+			<div class="flex flex-wrap items-center gap-4">
 				<a href="/dashboard" class="text-gray-600 hover:text-gray-900">
 					← Back to Dashboard
 				</a>
@@ -158,8 +158,8 @@
 
 				<div class="space-y-4">
 					{#each availability as day}
-						<div class="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
-							<div class="flex items-center min-w-[120px]">
+						<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 p-4 border border-gray-200 rounded-lg">
+							<div class="flex items-center sm:min-w-[120px]">
 								<input
 									type="checkbox"
 									bind:checked={day.enabled}
@@ -172,7 +172,7 @@
 							</div>
 
 							{#if day.enabled}
-								<div class="flex items-center gap-2 flex-1">
+								<div class="flex flex-wrap items-center gap-2 sm:flex-1">
 									<input
 										type="time"
 										bind:value={day.startTime}
@@ -192,7 +192,7 @@
 					{/each}
 				</div>
 
-				<div class="mt-6 flex gap-4">
+				<div class="mt-6 flex flex-wrap gap-4">
 					<button
 						type="submit"
 						disabled={saving}

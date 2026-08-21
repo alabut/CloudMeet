@@ -103,12 +103,12 @@
 	<!-- Header -->
 	<header class="bg-white shadow-sm">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-			<div class="flex justify-between items-center">
+			<div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
 				<div>
 					<h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
 					<p class="text-sm text-gray-600">Welcome back, {data.user?.name || 'User'}!</p>
 				</div>
-				<div class="flex gap-4">
+				<div class="flex flex-wrap gap-4">
 					<a
 						href="/dashboard/calendars"
 						class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
@@ -147,18 +147,18 @@
 		<!-- Booking Link -->
 		<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
 			<h2 class="text-lg font-semibold text-blue-900 mb-2">Your Booking Page</h2>
-			<div class="flex items-center gap-2">
+			<div class="flex flex-col sm:flex-row sm:items-center gap-2">
 				<input
 					type="text"
 					readonly
 					value="{data.appUrl}/"
-					class="flex-1 px-3 py-2 bg-white border border-blue-300 rounded-md text-sm"
+					class="flex-1 min-w-0 px-3 py-2 bg-white border border-blue-300 rounded-md text-sm"
 				/>
 				<button
 					onclick={() => {
 						navigator.clipboard.writeText(data.appUrl + '/');
 					}}
-					class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition text-sm"
+					class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition text-sm shrink-0"
 				>
 					Copy Link
 				</button>

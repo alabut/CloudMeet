@@ -216,19 +216,19 @@
 					{#each templates.filter(t => !t.template_type.startsWith('reminder_')) as template}
 						<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
 							<div class="p-4">
-								<div class="flex items-center justify-between">
-									<div class="flex items-center gap-3">
-										<div class="p-2 bg-gray-100 rounded-lg">
+								<div class="flex flex-wrap items-center justify-between gap-3">
+									<div class="flex items-center gap-3 min-w-0">
+										<div class="p-2 bg-gray-100 rounded-lg shrink-0">
 											<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={getTemplateIcon(template.template_type)}></path>
 											</svg>
 										</div>
-										<div>
+										<div class="min-w-0">
 											<h3 class="font-medium text-gray-900">{template.name}</h3>
 											<p class="text-sm text-gray-500">{template.description}</p>
 										</div>
 									</div>
-									<div class="flex items-center gap-3">
+									<div class="flex items-center gap-3 shrink-0">
 										<button
 											onclick={() => expandedTemplate = expandedTemplate === template.template_type ? null : template.template_type}
 											class="text-sm text-blue-600 hover:text-blue-700"
@@ -308,19 +308,19 @@
 					{#each templates.filter(t => t.template_type.startsWith('reminder_')) as template}
 						<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
 							<div class="p-4">
-								<div class="flex items-center justify-between">
-									<div class="flex items-center gap-3">
-										<div class="p-2 bg-amber-100 rounded-lg">
+								<div class="flex flex-wrap items-center justify-between gap-3">
+									<div class="flex items-center gap-3 min-w-0">
+										<div class="p-2 bg-amber-100 rounded-lg shrink-0">
 											<svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={getTemplateIcon(template.template_type)}></path>
 											</svg>
 										</div>
-										<div>
+										<div class="min-w-0">
 											<h3 class="font-medium text-gray-900">{template.name}</h3>
 											<p class="text-sm text-gray-500">{template.description}</p>
 										</div>
 									</div>
-									<div class="flex items-center gap-3">
+									<div class="flex items-center gap-3 shrink-0">
 										<button
 											onclick={() => expandedTemplate = expandedTemplate === template.template_type ? null : template.template_type}
 											class="text-sm text-blue-600 hover:text-blue-700"

@@ -142,7 +142,7 @@
 				</div>
 			{/if}
 
-			<div class="flex items-start gap-6">
+			<div class="flex flex-col sm:flex-row items-start gap-6">
 				<!-- Profile Image Upload -->
 				<div class="flex-shrink-0">
 					<div class="relative">
@@ -179,7 +179,7 @@
 				</div>
 
 				<!-- Name Input -->
-				<div class="flex-1 space-y-4">
+				<div class="flex-1 min-w-0 w-full space-y-4">
 					<div>
 						<label for="profile-name" class="block text-sm font-medium text-gray-700 mb-2">
 							Display Name
