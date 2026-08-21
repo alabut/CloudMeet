@@ -8,6 +8,7 @@ import { getCurrentUser } from '$lib/server/auth';
 import { cancelCalendarEvent, getValidAccessToken } from '$lib/server/google-calendar';
 import { cancelOutlookCalendarEvent, getValidOutlookAccessToken } from '$lib/server/outlook-calendar';
 import { sendCancellationEmail, getEmailTemplates, isEmailEnabled } from '$lib/server/email';
+import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
 
 export const POST = async (event: RequestEvent) => {
 	const env = event.platform?.env;
@@ -122,6 +123,9 @@ export const POST = async (event: RequestEvent) => {
 			.prepare(`UPDATE scheduled_emails SET status = 'cancelled' WHERE booking_id = ? AND status = 'pending'`)
 			.bind(bookingId)
 			.run();
+
+		// Cancelling frees up the slot, so both availability caches are stale
+		await invalidateAvailabilityCache(env.KV);
 
 		// Send cancellation email if enabled
 		if (env.EMAILIT_API_KEY) {

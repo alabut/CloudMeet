@@ -5,6 +5,7 @@
 import { redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getCurrentUser } from '$lib/server/auth';
+import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
 
 export const load: PageServerLoad = async (event) => {
 	const userId = await getCurrentUser(event);
@@ -55,6 +56,7 @@ export const actions: Actions = {
 		}
 
 		const db = event.platform?.env?.DB;
+		const kv = event.platform?.env?.KV;
 		if (!db) {
 			return fail(500, { error: 'Database not available' });
 		}
@@ -95,6 +97,12 @@ export const actions: Actions = {
 					)
 					.bind(userId, rule.day, rule.startTime, rule.endTime)
 					.run();
+			}
+
+			// Weekly hours and/or timezone changed - stale cached availability
+			// would otherwise show wrong slots/days for up to 5 minutes
+			if (kv) {
+				await invalidateAvailabilityCache(kv);
 			}
 
 			return { success: true };

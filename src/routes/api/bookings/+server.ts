@@ -9,6 +9,7 @@ import { createCalendarEvent, getValidAccessToken } from '$lib/server/google-cal
 import { createOutlookCalendarEvent, getValidOutlookAccessToken } from '$lib/server/outlook-calendar';
 import { sendBookingEmail, sendAdminNotificationEmail, getEmailTemplates, isEmailEnabled, type EmailTemplateType } from '$lib/server/email';
 import { isValidEmail, validateLength, validateFields, MAX_LENGTHS } from '$lib/server/validation';
+import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const env = platform?.env;
@@ -226,10 +227,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			)
 			.run();
 
-		// Invalidate availability cache
-		const dateStr = startDateTime.toISOString().split('T')[0];
-		const cacheKey = `availability:${eventSlug}:${dateStr}`;
-		await env.KV.delete(cacheKey);
+		// Invalidate availability cache (both month grid and per-day slots)
+		await invalidateAvailabilityCache(env.KV);
 
 		// Send booking confirmation email via Emailit (if enabled)
 		if (env.EMAILIT_API_KEY) {

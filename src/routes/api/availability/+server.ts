@@ -11,6 +11,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getBusyTimes, getValidAccessToken } from '$lib/server/google-calendar';
 import { getOutlookBusyTimes, getValidOutlookAccessToken } from '$lib/server/outlook-calendar';
+import { getDayCacheKey } from '$lib/server/availability-cache';
 
 interface TimeSlot {
 	start: string;
@@ -34,7 +35,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		const db = env.DB;
 
 		// Check cache first to avoid expensive DB/API calls
-		const cacheKey = `availability:${eventSlug}:${date}`;
+		const cacheKey = await getDayCacheKey(env.KV, eventSlug, date);
 		const cached = await env.KV.get(cacheKey);
 		if (cached) {
 			return json(JSON.parse(cached));

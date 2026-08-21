@@ -7,6 +7,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createCalendarEvent, cancelCalendarEvent, getValidAccessToken } from '$lib/server/google-calendar';
 import { sendRescheduleEmail, sendAdminRescheduleNotification, getEmailTemplates, isEmailEnabled } from '$lib/server/email';
+import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const env = platform?.env;
@@ -184,11 +185,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			.bind(bookingId)
 			.run();
 
-		// Invalidate availability cache for both old and new dates
-		const oldDateStr = oldStartDateTime.toISOString().split('T')[0];
-		const newDateStr = newStartDateTime.toISOString().split('T')[0];
-		await env.KV.delete(`availability:${originalBooking.event_slug}:${oldDateStr}`);
-		await env.KV.delete(`availability:${originalBooking.event_slug}:${newDateStr}`);
+		// Invalidate availability cache (both month grid and per-day slots)
+		await invalidateAvailabilityCache(env.KV);
 
 		// Send reschedule email (not cancellation email!)
 		if (env.EMAILIT_API_KEY) {
