@@ -5,6 +5,7 @@
 		selectedSlot: { start: string; end: string };
 		meetingUrl: string | null;
 		meetingType?: 'google_meet' | 'teams';
+		bookingId?: string | null;
 		brandColor: string;
 		formatTimeRange: (start: string, end: string) => string;
 		formatSelectedDate: (dateStr: string) => string;
@@ -16,6 +17,7 @@
 		selectedSlot,
 		meetingUrl,
 		meetingType = 'google_meet',
+		bookingId = null,
 		brandColor,
 		formatTimeRange,
 		formatSelectedDate
@@ -57,5 +59,13 @@
 				{/if}
 			</div>
 		</div>
+
+		{#if bookingId}
+			<div class="flex items-center justify-center gap-4 text-sm">
+				<a href={`/reschedule/${bookingId}`} class="pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors" style="color: {brandColor}">Reschedule</a>
+				<span class="text-text-secondary">&middot;</span>
+				<a href={`/cancel/${bookingId}`} class="pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors" style="color: {brandColor}">Cancel</a>
+			</div>
+		{/if}
 	</div>
 </div>

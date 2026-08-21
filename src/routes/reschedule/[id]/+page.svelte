@@ -197,6 +197,10 @@
 						{/if}
 					</div>
 				</div>
+
+				<div class="flex items-center justify-center text-sm">
+					<a href={`/cancel/${data.booking.id}`} class="pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors text-accent">Cancel</a>
+				</div>
 			</div>
 		</div>
 	{:else}

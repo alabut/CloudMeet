@@ -136,6 +136,15 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		let outlookEventId: string | null = null;
 		let meetingUrl: string | null = null;
 
+		// Generate the booking id up front so the reschedule/cancel links can be
+		// included in the calendar invite description (the booking row itself
+		// isn't inserted until after the calendar event is created below).
+		const bookingId = crypto.randomUUID();
+		const appUrl = (env.APP_URL || '').replace(/\/$/, '');
+		const rescheduleCancelLines = appUrl
+			? `\n\nNeed to make a change?\nReschedule: ${appUrl}/reschedule/${bookingId}\nCancel: ${appUrl}/cancel/${bookingId}`
+			: '';
+
 		if (inviteCalendar === 'google') {
 			// Create Google Calendar event with Google Meet
 			try {
@@ -148,7 +157,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 				const calendarEvent = await createCalendarEvent(accessToken, {
 					summary: `${eventType.name} with ${attendeeName}`,
-					description: `${eventType.description || ''}\n\nAttendee: ${attendeeName} (${attendeeEmail})${notes ? `\n\nNotes from attendee:\n${notes}` : ''}`,
+					description: `${eventType.description || ''}\n\nAttendee: ${attendeeName} (${attendeeEmail})${notes ? `\n\nNotes from attendee:\n${notes}` : ''}${rescheduleCancelLines}`,
 					start: {
 						dateTime: startDateTime.toISOString(),
 						timeZone: 'UTC'
@@ -186,7 +195,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 				const outlookEvent = await createOutlookCalendarEvent(outlookToken, {
 					summary: `${eventType.name} with ${attendeeName}`,
-					description: `${eventType.description || ''}\n\nAttendee: ${attendeeName} (${attendeeEmail})${notes ? `\n\nNotes from attendee:\n${notes}` : ''}`,
+					description: `${eventType.description || ''}\n\nAttendee: ${attendeeName} (${attendeeEmail})${notes ? `\n\nNotes from attendee:\n${notes}` : ''}${rescheduleCancelLines}`,
 					startTime: startDateTime.toISOString(),
 					endTime: endDateTime.toISOString(),
 					attendeeEmail,
@@ -205,15 +214,16 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		}
 
 		// Create booking in database
-		const result = await db
+		await db
 			.prepare(
 				`INSERT INTO bookings (
-					user_id, event_type_id, start_time, end_time,
+					id, user_id, event_type_id, start_time, end_time,
 					attendee_name, attendee_email, attendee_notes, status,
 					google_event_id, outlook_event_id, meeting_url, created_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, CURRENT_TIMESTAMP)`
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, CURRENT_TIMESTAMP)`
 			)
 			.bind(
+				bookingId,
 				user.id,
 				eventType.id,
 				startTime,
@@ -244,13 +254,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 				// Use contact email for reply-to if available
 				const replyToEmail = user.contact_email || user.email;
-
-				// Get the booking ID (it's a UUID string, not integer)
-				const bookingResult = await db
-					.prepare('SELECT id FROM bookings WHERE google_event_id = ? OR outlook_event_id = ? OR (user_id = ? AND start_time = ? AND attendee_email = ?)')
-					.bind(googleEventId, outlookEventId, user.id, startTime, attendeeEmail)
-					.first<{ id: string }>();
-				const bookingId = bookingResult?.id || result.meta.last_row_id?.toString() || '';
 
 				// Get email templates to check if confirmation is enabled
 				const templates = await getEmailTemplates(db, user.id);
@@ -328,7 +331,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 		return json({
 			success: true,
-			bookingId: result.meta.last_row_id,
+			bookingId,
 			meetingUrl,
 			meetingType: inviteCalendar === 'outlook' ? 'teams' : 'google_meet'
 		});
