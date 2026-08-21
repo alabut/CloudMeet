@@ -1,5 +1,33 @@
 # Setup Notes
 
+## Repo structure (2026-08-21 restructure)
+
+The project was originally built inside `~/Developer/calendar-scheduling/stack-b-cloudmeet/`, a subdirectory of a "bake-off" parent repo comparing multiple scheduling-app stacks (see `docs/bakeoff-research.md` and `docs/prompt-a-vercel-supabase.md`, the unbuilt alternative stack, both carried over below for reference). That structure was collapsed into a single project:
+
+- **Forked** `dennisklappe/CloudMeet` to `alabut/CloudMeet` on GitHub — **public** (deliberately, not private: it's a personal-site customization with no secrets in the repo, and staying in GitHub's fork network gives a "forked from dennisklappe/CloudMeet" badge for free — useful as a portfolio/conversation-starter piece).
+- Moved `docs/` and `.claude/` (agent definitions used to build this) from the old parent repo into this repo and committed them ("Absorb project docs and agent definitions").
+- Git remotes: `origin` = `https://github.com/alabut/CloudMeet.git` (your fork, push target), `upstream` = `https://github.com/dennisklappe/CloudMeet.git` (read-only, for pulling upstream fixes).
+- Relocated the whole folder from `~/Developer/calendar-scheduling/stack-b-cloudmeet/` to **`~/Developer/CloudMeet/`** as a standalone top-level project — the "stack-b" name no longer applied once it was the only stack. Verified nothing referenced the old path (grep across config/code came up clean — only the historical planning docs themselves mention it, which is fine as a record) and that build + local D1 state survived the move intact.
+- The old parent repo (`~/Developer/calendar-scheduling/`, a single unpublished local "Initial commit" with no remote) was deleted once confirmed empty.
+- Pushed to the fork's `main`. Nothing was pushed to `upstream` (you don't have write access there, and shouldn't — see the PR rule below).
+
+**Sync fork routine** (pulling upstream fixes into your fork):
+
+```bash
+git fetch upstream
+git log main..upstream/main --oneline   # see what's new upstream
+git merge upstream/main                 # or: git rebase upstream/main
+git push origin main
+```
+
+This works via plain git remotes regardless of GitHub's fork-network UI status — no dependency on GitHub's own "Sync fork" button.
+
+**Rule: contributing back upstream.** If you ever want to send a fix or feature back to `dennisklappe/CloudMeet`, open the PR from a **clean branch cut off `upstream/main`** (`git fetch upstream && git checkout -b fix/whatever upstream/main`), not off your customized `main` — your `main` carries personal branding, config, and style changes that don't belong in a PR meant for the original project. Cherry-pick just the relevant commit(s) onto that clean branch instead.
+
+**Housekeeping while restructuring:** `static/availability/defaults.json` and `static/cache-warming.json` were untracked from git (added to `.gitignore`) — `scripts/prebuild.js` rewrites a fresh timestamp into both on every single `npm run build` (an `npm` `prebuild` hook), so they showed a no-op diff after every build, forever. This is a pre-existing upstream behavior, not something introduced here. Files still exist on disk and still ship in the build output — only the git tracking changed.
+
+**Upstream Issue #8 check** (build failure from a duplicate `cacheKey` variable declaration in the availability endpoints, per your request): confirmed our current code has only one `const cacheKey` declaration in each of `src/routes/api/availability/+server.ts` and `.../month/+server.ts` — the bug described in the issue isn't present, consistent with our clean build (both locally and the successful production deploy). The issue is still shown "Open" upstream, but that appears to be bookkeeping lag on the maintainer's side rather than an unfixed bug on `main` — the buggy commit referenced in the issue (`29367ab`) either never landed on `main` or was corrected before/without a linked closing commit. Practical takeaway: we're unaffected regardless of the issue's open/closed status, and `git fetch upstream` will surface it either way if that ever changes.
+
 ## Repo health check (Task 1)
 
 - Cloned from https://github.com/dennisklappe/CloudMeet on 2026-08-20.
