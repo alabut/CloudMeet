@@ -25,7 +25,7 @@
 </script>
 
 <!-- ===== USER STYLE ANCHOR: confirmation-view ===== -->
-<div class="bg-bg border border-border rounded-large shadow-lg p-6 sm:p-8 max-w-md w-full mx-2">
+<div class="bg-bg border border-border rounded-large shadow-lg p-6 sm:p-8 max-w-md w-[calc(100%-1rem)] sm:w-full mx-2">
 	<div class="text-center">
 		<div class="w-16 h-16 sm:w-20 sm:h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
 			<svg class="w-8 h-8 sm:w-10 sm:h-10 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">

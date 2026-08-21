@@ -183,6 +183,15 @@
 		fetchMonthAvailability();
 	});
 
+	// Scroll back to the top when the success screen appears -- the user may have
+	// scrolled deep into the form before submitting, and the view swap keeps the
+	// old scroll offset otherwise.
+	$effect(() => {
+		if (bookingStatus === 'success' && browser) {
+			window.scrollTo(0, 0);
+		}
+	});
+
 	async function handleDateSelect(dateStr: string) {
 		selectedDate = dateStr;
 		selectedSlot = null;
