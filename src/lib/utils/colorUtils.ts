@@ -1,5 +1,18 @@
 /**
  * Color utility functions for brand color manipulation
+ *
+ * NOTE (dark-theme restyle, see docs/STYLE-MAP.md): this file is left as-is and
+ * still runs -- createBrandColors() is still called by the public booking page
+ * so nothing here breaks and no database change is required. What changed is
+ * that src/routes/[slug]/+page.svelte no longer feeds the *derived* light/lighter/
+ * dark tints from this function into the page's --brand-* CSS variables. Those
+ * tints were designed for a light background and read badly on the site's
+ * default #111 dark background (and don't know how to adapt for the cream light
+ * mode either). Instead the page now points --brand-color/--brand-light/etc at
+ * the fixed --accent / --accent-hover / --bg-secondary tokens from app.css, so
+ * the booking page looks correct and theme-aware no matter what brand_color a
+ * host has set in the dashboard. The real host brand_color is still used for the
+ * one place that's cosmetic and harmless either way: the generated favicon.
  */
 
 export interface RGB {

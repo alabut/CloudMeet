@@ -5,8 +5,17 @@
 		<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
 		<link rel="icon" type="image/png" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="dark light" />
 		%sveltekit.head%
 	</head>
+	<!--
+		Note: background/font are intentionally NOT set here on <body>. This single
+		<body> is shared by every route including the host dashboard (out of scope
+		for this restyle), and font-family in particular cascades to any descendant
+		that doesn't set its own -- the dashboard has plenty of those. Instead the
+		dark bg + serif font are applied on the public booking page's own wrapper,
+		see the "booking-page-layout-wrapper" anchor in src/routes/[slug]/+page.svelte.
+	-->
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>

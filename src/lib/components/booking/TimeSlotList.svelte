@@ -30,8 +30,8 @@
 </script>
 
 <!-- ===== USER STYLE ANCHOR: availability-slot-picker (time slots) ===== -->
-<div class="w-52 ml-6 border-l border-gray-200 pl-6 flex flex-col" style="max-height: 400px;">
-	<h3 class="text-sm font-medium text-gray-500 mb-4 flex-shrink-0">
+<div class="w-52 ml-6 border-l border-border pl-6 flex flex-col" style="max-height: 400px;">
+	<h3 class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-4 flex-shrink-0">
 		{formatSelectedDate(selectedDate).split(',')[0]}
 	</h3>
 
@@ -40,19 +40,19 @@
 			<div class="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style="border-color: {brandColor}; border-top-color: transparent"></div>
 		</div>
 	{:else if availableSlots.length === 0}
-		<p class="text-sm text-gray-500 py-4">No available times</p>
+		<p class="text-sm text-text-secondary py-4">No available times</p>
 	{:else}
 		<div class="space-y-2 overflow-y-auto flex-1 pr-2 pb-2 scrollbar-thin">
 			{#each availableSlots as slot}
 				{#if selectedSlot === slot}
 					<div class="flex gap-2">
-						<button type="button" class="flex-1 py-2.5 px-3 border-2 border-gray-900 bg-gray-900 text-white rounded-lg text-sm font-semibold">
+						<button type="button" class="flex-1 py-2.5 px-3 border-2 border-accent bg-accent text-white rounded-lg text-sm font-semibold">
 							{formatTime(slot.start)}
 						</button>
 						<button
 							type="button"
 							onclick={onConfirm}
-							class="flex-1 py-2.5 px-3 text-white rounded-lg text-sm font-semibold transition"
+							class="flex-1 py-2.5 px-3 text-white rounded-lg text-sm font-semibold transition hover:opacity-90"
 							style="background-color: {brandColor}"
 						>
 							Next
