@@ -2,11 +2,23 @@
 Baseline = the "working vanilla deploy" commit. Every item below is optional; roll back to baseline any time.
 ## Quick wins (style anchors / small edits)
 - [ ] Branding pass: replace CloudMeet name/logo/colors with my own (use STYLE-MAP.md anchors)
-- [ ] Fix dishonest success-screen copy: "A calendar invitation has been sent to your email address" shows even when no email service is configured — make it conditional or reword
+- [ ] **Attendees never actually receive an invitation.** The success screen tells the visitor "A calendar invitation has been sent to your email address" — this is false for everyone. The Google Calendar event is created with the attendee listed, but the API call in `src/routes/api/bookings/+server.ts` omits `sendUpdates`, and Google's default is to send no notification. Gmail-address attendees get the event silently auto-added by Google (which is why testing with a `+alias` Gmail looked like it worked); anyone on iCloud/Outlook/Fastmail gets nothing at all and never learns the meeting exists. **Fix: add `sendUpdates=all` to the events.insert call** — one line, makes the copy honest, and needs no email service. Verify afterward with a booking to a non-Google address.
 - [x] Google consent screen shows "Sheets MCP Server" — fix app name in Google Cloud Console → Branding (cosmetic; needs my Google account, so drive it via Claude-in-Chrome with me approving) — done: renamed to alabut.com in Google Console
+## Blockers before sharing the link with friends (V2 endgame)
+- [ ] **Changing availability doesn't clear the cache.** Availability is cached in Cloudflare KV for 300s in two independent caches — the month grid (`availability:month:{slug}:{month}`, set in `src/routes/api/availability/month/+server.ts`) and per-day slots (`availability:{slug}:{date}`, set in `src/routes/api/availability/+server.ts`). Saving new availability purges neither; only creating a booking and rescheduling purge anything, and those purge the day cache only, never the month cache. Symptom: after editing hours you get days that look bookable but have no slots, and days that still offer slots after being switched off. Fix: purge both caches when availability, timezone, or an event type is saved.
+- [ ] **Set timezone and weekly hours on PRODUCTION.** These were only ever set on localhost, which has a separate database. Live dashboard at schedule.alabut.com/dashboard/availability — confirm timezone is Pacific and hours are actually saved.
+- [ ] **Availability form may not reload saved values** — day checkboxes render ticked with the time fields blank after a save+reload. Confirm, then fix if real.
+- [ ] **Cancel and reschedule are completely untested on production.** Separate code paths (`/cancel/[id]`, `/reschedule-response/[token]`) never exercised. Friends will click these. Test before sharing.
+- [ ] **Remove "Powered by CloudMeet" branding** from the public booking flow.
+
 ## Needs setup (documented, not built)
 - [ ] Email notifications: Emailit API key + EMAIL_FROM, then deploy cron reminder worker (DEPLOY.md step 6)
 - [ ] npm audit: 11 high transitive vulns — run `npm audit fix`, retest booking flow
 ## Investigations (scope before building — may not be feasible)
 - [ ] Zoom instead of Google Meet for meeting links: CloudMeet has no native Zoom support; investigate Zoom API (user has Pro account) → wiring a meeting-create call into the booking flow. Scope first, decide later.
 - [ ] Outlook calendar sync (documented in SETUP-NOTES.md, currently skipped)
+
+## Decisions made (not TODOs)
+- **Deploying stays manual, on purpose.** Git/GitHub is for history only — pushing does *not* update the live site. Publishing is one command from this folder: `npm run deploy` (builds locally, uploads straight to Cloudflare — a "Direct Upload" Pages project). Automating deploy-on-push isn't worth it at single-developer scale; revisit if commits get frequent or anyone else starts shipping.
+- **DANGER if anyone ever enables the bundled GitHub Actions deploy.** `.github/workflows/deploy.yml` (and `sync-and-deploy.yml`) are set to manual trigger only. They do more than build — they *provision*, creating a D1 database named `cloudmeet-db` and patching its ID into `wrangler.toml`. Production actually runs on a database named `cloudmeet`. Turning these on as-written would point the live site at a second, empty database and make all existing bookings appear to vanish. Strip the provisioning steps out before ever switching the trigger to `on: push`. See SETUP-NOTES.md deviation #3.
+- **Native Cloudflare↔GitHub integration is not available to this project without a rebuild.** Pages projects are either "Direct Upload" or "Git-connected", fixed at creation and not convertible. Switching would mean a new Pages project, re-adding all six secrets, re-binding D1 and KV, and migrating the `schedule.alabut.com` custom domain.
