@@ -9,7 +9,8 @@ Baseline = the "working vanilla deploy" commit. Every item below is optional; ro
 - [ ] **Set timezone and weekly hours on PRODUCTION.** These were only ever set on localhost, which has a separate database. Live dashboard at schedule.alabut.com/dashboard/availability — confirm timezone is Pacific and hours are actually saved.
 - [ ] **Availability form may not reload saved values** — day checkboxes render ticked with the time fields blank after a save+reload. Confirm, then fix if real.
 - [ ] **Cancel and reschedule are completely untested on production.** Separate code paths (`/cancel/[id]`, `/reschedule-response/[token]`) never exercised. Friends will click these. Test before sharing.
-- [ ] **Remove "Powered by CloudMeet" branding** from the public booking flow.
+- [x] **Remove "Powered by CloudMeet" branding** — done, Footer.svelte deleted entirely (LICENSE untouched).
+- [ ] **Reschedule page breaks on phones.** `src/routes/reschedule/[id]/+page.svelte:204` hardcodes an inline `style="width: 650px"` (920px once a date is picked) with no mobile breakpoint, so the card overflows the viewport on a 375px screen. Pre-existing from upstream CloudMeet, not introduced by the restyle. Friends will hit this on their phones — fix before sharing.
 
 ## Needs setup (documented, not built)
 - [ ] Email notifications: Emailit API key + EMAIL_FROM, then deploy cron reminder worker (DEPLOY.md step 6)
