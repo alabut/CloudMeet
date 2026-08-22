@@ -258,7 +258,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		}
 
 		// Cache response in KV for 5 minutes
-		await env.KV.put(cacheKey, JSON.stringify({ slots }), { expirationTtl: 300 });
+		await env.KV.put(cacheKey, JSON.stringify({ slots }), { expirationTtl: 60 /* KV minimum. Bounds staleness when a cache-version
+			   write has not yet propagated -- see availability-cache.ts */ });
 
 		return json({ slots });
 	} catch (err: any) {

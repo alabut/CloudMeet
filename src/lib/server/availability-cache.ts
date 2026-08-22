@@ -17,6 +17,28 @@
  * no per-key deletes, and no read-modify-write race to get wrong.
  */
 
+/**
+ * KNOWN LIMITATION -- eventual consistency.
+ *
+ * Cloudflare KV is eventually consistent: a `put` of the version key can take
+ * up to ~60s to propagate, and `get` reads are edge-cached for a similar
+ * window. So for roughly a minute after availability changes, a request may
+ * read the OLD version, build the OLD cache key, and serve pre-change data.
+ * Observed in production: right after saving new hours the booking calendar
+ * showed every date disabled, and a single reload fixed it.
+ *
+ * Mitigated (not solved) by holding cached entries for only 60s -- KV's
+ * minimum -- so a stale version still misses an expired entry and recomputes.
+ * Worst-case staleness is therefore bounded at about a minute.
+ *
+ * The real fix is to keep the version in D1, which IS strongly consistent.
+ * Both availability endpoints already read the users row on every request
+ * (`SELECT id, slug, timezone, settings FROM users`), so storing it in
+ * `users.settings` would cost no extra query. It was not done here because it
+ * changes this module's signature and all six call sites, several of which sit
+ * in the booking, cancel and reschedule paths.
+ */
+
 const CACHE_VERSION_KEY = 'availability:cache-version';
 
 /**
