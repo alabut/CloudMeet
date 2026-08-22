@@ -8,6 +8,7 @@ import type { RequestHandler } from './$types';
 import { createCalendarEvent, cancelCalendarEvent, getValidAccessToken } from '$lib/server/google-calendar';
 import { sendRescheduleEmail, sendAdminRescheduleNotification, getEmailTemplates, isEmailEnabled } from '$lib/server/email';
 import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
+import { buildCalendarEventDescription } from '$lib/server/calendar-event-description';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const env = platform?.env;
@@ -123,10 +124,16 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			}
 
 			// Create new calendar event
-			const notes = originalBooking.attendee_notes;
 			const calendarEvent = await createCalendarEvent(accessToken, {
 				summary: `${originalBooking.event_name} with ${originalBooking.attendee_name}`,
-				description: `${originalBooking.event_description || ''}\n\nAttendee: ${originalBooking.attendee_name} (${originalBooking.attendee_email})${notes ? `\n\nNotes from attendee:\n${notes}` : ''}`,
+				description: buildCalendarEventDescription({
+					eventDescription: originalBooking.event_description,
+					attendeeName: originalBooking.attendee_name,
+					attendeeEmail: originalBooking.attendee_email,
+					attendeeNotes: originalBooking.attendee_notes,
+					bookingId: originalBooking.id,
+					appUrl: env.APP_URL
+				}),
 				start: {
 					dateTime: newStartDateTime.toISOString(),
 					timeZone: 'UTC'

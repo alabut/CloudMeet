@@ -10,6 +10,7 @@ import { createOutlookCalendarEvent, getValidOutlookAccessToken } from '$lib/ser
 import { sendBookingEmail, sendAdminNotificationEmail, getEmailTemplates, isEmailEnabled, type EmailTemplateType } from '$lib/server/email';
 import { isValidEmail, validateLength, validateFields, MAX_LENGTHS } from '$lib/server/validation';
 import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
+import { buildCalendarEventDescription } from '$lib/server/calendar-event-description';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const env = platform?.env;
@@ -140,10 +141,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		// included in the calendar invite description (the booking row itself
 		// isn't inserted until after the calendar event is created below).
 		const bookingId = crypto.randomUUID();
-		const appUrl = (env.APP_URL || '').replace(/\/$/, '');
-		const rescheduleCancelLines = appUrl
-			? `\n\nNeed to make a change?\nReschedule: ${appUrl}/reschedule/${bookingId}\nCancel: ${appUrl}/cancel/${bookingId}`
-			: '';
+		const calendarDescription = buildCalendarEventDescription({
+			eventDescription: eventType.description,
+			attendeeName,
+			attendeeEmail,
+			attendeeNotes: notes,
+			bookingId,
+			appUrl: env.APP_URL
+		});
 
 		if (inviteCalendar === 'google') {
 			// Create Google Calendar event with Google Meet
@@ -157,7 +162,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 				const calendarEvent = await createCalendarEvent(accessToken, {
 					summary: `${eventType.name} with ${attendeeName}`,
-					description: `${eventType.description || ''}\n\nAttendee: ${attendeeName} (${attendeeEmail})${notes ? `\n\nNotes from attendee:\n${notes}` : ''}${rescheduleCancelLines}`,
+					description: calendarDescription,
 					start: {
 						dateTime: startDateTime.toISOString(),
 						timeZone: 'UTC'
@@ -195,7 +200,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 				const outlookEvent = await createOutlookCalendarEvent(outlookToken, {
 					summary: `${eventType.name} with ${attendeeName}`,
-					description: `${eventType.description || ''}\n\nAttendee: ${attendeeName} (${attendeeEmail})${notes ? `\n\nNotes from attendee:\n${notes}` : ''}${rescheduleCancelLines}`,
+					description: calendarDescription,
 					startTime: startDateTime.toISOString(),
 					endTime: endDateTime.toISOString(),
 					attendeeEmail,

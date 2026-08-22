@@ -7,6 +7,7 @@ import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { createCalendarEvent, cancelCalendarEvent, getValidAccessToken } from '$lib/server/google-calendar';
 import { sendAdminRescheduleNotification, sendAdminCancellationNotification } from '$lib/server/email';
+import { buildCalendarEventDescription } from '$lib/server/calendar-event-description';
 
 export const load: PageServerLoad = async ({ params, url, platform }) => {
 	const db = platform?.env?.DB;
@@ -158,11 +159,31 @@ export const actions: Actions = {
 
 				const calendarEvent = await createCalendarEvent(accessToken, {
 					summary: `${proposal.event_name} with ${proposal.attendee_name}`,
-					description: proposal.attendee_notes || '',
-					startTime: proposal.proposed_start_time,
-					endTime: proposal.proposed_end_time,
-					attendeeEmail: proposal.attendee_email,
-					hostEmail: proposal.host_email
+					description: buildCalendarEventDescription({
+						eventDescription: proposal.event_description,
+						attendeeName: proposal.attendee_name,
+						attendeeEmail: proposal.attendee_email,
+						attendeeNotes: proposal.attendee_notes,
+						bookingId: proposal.booking_id,
+						appUrl: env.APP_URL
+					}),
+					start: {
+						dateTime: new Date(proposal.proposed_start_time).toISOString(),
+						timeZone: 'UTC'
+					},
+					end: {
+						dateTime: new Date(proposal.proposed_end_time).toISOString(),
+						timeZone: 'UTC'
+					},
+					attendees: [
+						{ email: proposal.attendee_email }
+					],
+					conferenceData: {
+						createRequest: {
+							requestId: crypto.randomUUID(),
+							conferenceSolutionKey: { type: 'hangoutsMeet' }
+						}
+					}
 				});
 
 				newGoogleEventId = calendarEvent.id;
