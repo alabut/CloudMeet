@@ -74,8 +74,14 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		const useGoogleCalendar = availabilityCalendars === 'google' || availabilityCalendars === 'both';
 		const useOutlookCalendar = availabilityCalendars === 'outlook' || availabilityCalendars === 'both';
 
-		// Parse date
-		const requestedDate = new Date(date);
+		// Parse date as LOCAL midnight, not UTC.
+		// `new Date('2026-08-24')` is parsed as UTC midnight, but .getDay() reads it
+		// back in local time - so in any UTC-negative zone it reports the PREVIOUS day
+		// and availability rules are looked up for the wrong weekday. The month
+		// endpoint uses the local component constructor, so the two disagreed.
+		// This only stayed hidden in production because Workers run with TZ=UTC.
+		const [reqYear, reqMonth, reqDay] = date.split('-').map(Number);
+		const requestedDate = new Date(reqYear, reqMonth - 1, reqDay);
 		const dayOfWeek = requestedDate.getDay();
 
 		// Get availability rules for this day
