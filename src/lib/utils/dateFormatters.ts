@@ -157,3 +157,20 @@ export function formatIsoTime(
 	const { formatTime } = createFormatters(options);
 	return formatTime(new Date(isoStr));
 }
+
+/**
+ * Normalize a stored TIME value for <input type="time">.
+ * Browsers require zero-padded HH:MM; SQLite/D1 may return "9:00" or "09:00:00".
+ */
+export function normalizeTimeForInput(time: string | null | undefined, fallback = '09:00'): string {
+	if (!time) return fallback;
+
+	const match = time.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+	if (!match) return fallback;
+
+	const hours = Number(match[1]);
+	const minutes = Number(match[2]);
+	if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return fallback;
+
+	return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}

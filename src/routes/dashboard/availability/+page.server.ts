@@ -6,6 +6,7 @@ import { redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { getCurrentUser } from '$lib/server/auth';
 import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
+import { normalizeTimeForInput } from '$lib/utils/dateFormatters';
 
 export const load: PageServerLoad = async (event) => {
 	const userId = await getCurrentUser(event);
@@ -42,7 +43,11 @@ export const load: PageServerLoad = async (event) => {
 		.first<{ timezone: string | null }>();
 
 	return {
-		rules: rules.results,
+		rules: rules.results.map((rule) => ({
+			...rule,
+			start_time: normalizeTimeForInput(rule.start_time),
+			end_time: normalizeTimeForInput(rule.end_time, '17:00')
+		})),
 		timezone: user?.timezone || 'UTC'
 	};
 };
@@ -95,7 +100,12 @@ export const actions: Actions = {
 						`INSERT INTO availability_rules (user_id, day_of_week, start_time, end_time)
 						VALUES (?, ?, ?, ?)`
 					)
-					.bind(userId, rule.day, rule.startTime, rule.endTime)
+					.bind(
+						userId,
+						rule.day,
+						normalizeTimeForInput(rule.startTime),
+						normalizeTimeForInput(rule.endTime, '17:00')
+					)
 					.run();
 			}
 

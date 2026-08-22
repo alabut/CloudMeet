@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
+	import { normalizeTimeForInput } from '$lib/utils/dateFormatters';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -23,8 +24,8 @@
 				day: day.id,
 				name: day.name,
 				enabled: existingRules.length > 0,
-				startTime: existingRules[0]?.start_time || '09:00',
-				endTime: existingRules[0]?.end_time || '17:00'
+				startTime: normalizeTimeForInput(existingRules[0]?.start_time),
+				endTime: normalizeTimeForInput(existingRules[0]?.end_time, '17:00')
 			};
 		})
 	);
