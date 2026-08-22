@@ -6,8 +6,7 @@
 	import { detectTimezone, getTimezoneLabel, getTimezoneWithTime, TIMEZONE_LABELS } from '$lib/constants/timezones';
 	import { formatDateLocal, formatSelectedDate, createFormatters } from '$lib/utils/dateFormatters';
 	import { BookingCalendar, TimeSlotList, BookingForm, BookingSuccess, EventSidebar } from '$lib/components/booking';
-	import BrandLogo from '$lib/components/BrandLogo.svelte';
-	import AlAvatar from '$lib/components/AlAvatar.svelte';
+	import BookingIdentity from '$lib/components/BookingIdentity.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -274,25 +273,29 @@
 	}
 
 	const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+	const displayEventName = $derived(data.slug === '30min' ? '30-minute conversation' : (data.eventType?.name || 'Meeting'));
+	const displayDescription = $derived(data.slug === '30min'
+		? 'Pick a time for a conversation about product design, startups, or whatever brought you here.'
+		: '');
 </script>
 
 <svelte:head>
-	<title>{data.eventType?.name || 'Book a Meeting'} with {data.user?.name || 'Al Abut'}</title>
+	<title>{displayEventName} with {data.user?.name || 'Al Abut'}</title>
 	<meta
 		name="description"
-		content="Book {data.eventType?.name || 'a meeting'} with {data.user?.name || 'Al Abut'}."
+		content="Book a {displayEventName} with {data.user?.name || 'Al Abut'}."
 	/>
 </svelte:head>
 
 <!-- ===== USER STYLE ANCHOR: booking-page-layout-wrapper ===== -->
 <div
-	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center md:justify-center md:p-gutter"
+	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center md:justify-start md:px-gutter md:py-10"
 	style="--brand-color: {brandColor}; --brand-light: {brandDark}; --brand-lighter: {brandLighter}; --brand-dark: {brandDark}; --brand-rgb: {colors.rgb.r}, {colors.rgb.g}, {colors.rgb.b};"
 >
 	{#if bookingStatus === 'success'}
 		<!-- Success Screen -->
 		<BookingSuccess
-			eventName={data.eventType?.name || 'Meeting'}
+			eventName={displayEventName}
 			{selectedDate}
 			{selectedSlot}
 			{meetingUrl}
@@ -303,14 +306,10 @@
 			{formatSelectedDate}
 		/>
 	{:else}
+		<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
+
 		<!-- MOBILE LAYOUT (< 768px) - Full white page -->
 		<div class="md:hidden min-h-screen w-full bg-bg">
-			{#if mobileStep === 'calendar'}
-				<div class="flex justify-center px-6 pt-6">
-					<BrandLogo />
-				</div>
-			{/if}
-
 			<!-- Cover Image with black line below -->
 			{#if data.eventType?.cover_image}
 				<div class="px-6 pt-6 flex justify-center">
@@ -331,20 +330,10 @@
 				</div>
 			{/if}
 
-			<!-- Profile Image centered with name below -->
 			{#if mobileStep === 'calendar'}
-				<div class="flex flex-col items-center pt-8 pb-6 px-6">
-					{#if data.user?.profileImage}
-						<img src={data.user.profileImage} alt={data.user.name} class="w-24 h-24 rounded-full object-cover border-4 border-bg shadow-lg" />
-					{:else}
-						<AlAvatar class="w-24 h-24 border-4 border-bg shadow-lg" />
-					{/if}
-					<p class="mt-4 font-meta text-extrasmall uppercase tracking-wide text-text-secondary">{data.user?.name || 'Host'}</p>
-				</div>
-
 				<!-- Meeting Title -->
-				<div class="px-6 pb-5">
-					<h1 class="font-display text-2xl font-medium text-text text-center">{data.eventType?.name || 'Meeting'}</h1>
+				<div class="px-6 pt-1 pb-5">
+					<h2 class="font-display text-2xl font-medium text-text text-center">{displayEventName}</h2>
 				</div>
 
 				<!-- Meeting Details List -->
@@ -392,9 +381,13 @@
 				</div>
 
 				<!-- Description -->
-				{#if data.eventType?.description}
+				{#if displayDescription || data.eventType?.description}
 					<div class="px-6 pb-5 text-text-secondary prose prose-sm max-w-none prose-headings:text-text prose-p:text-text-secondary prose-strong:text-text prose-a:text-accent prose-li:text-text-secondary">
-						{@html sanitizedDescription}
+						{#if displayDescription}
+							<p>{displayDescription}</p>
+						{:else}
+							{@html sanitizedDescription}
+						{/if}
 					</div>
 				{/if}
 
@@ -557,6 +550,8 @@
 				{selectedSlot}
 				{brandColor}
 				{formatTime}
+				displayName={displayEventName}
+				{displayDescription}
 			/>
 
 			<!-- Main Content -->

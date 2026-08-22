@@ -1,9 +1,10 @@
 <script lang="ts">
 	interface Props {
 		class?: string;
+		imageClass?: string;
 	}
 
-	let { class: className = '' }: Props = $props();
+	let { class: className = '', imageClass = 'h-[68px] w-[69px]' }: Props = $props();
 </script>
 
 <a
@@ -26,7 +27,7 @@
 			width="69"
 			height="68"
 			alt="Al Abut"
-			class="block h-[68px] w-[69px]"
+			class={`block ${imageClass}`}
 		/>
 	</picture>
 </a>

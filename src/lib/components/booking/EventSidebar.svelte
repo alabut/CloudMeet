@@ -2,8 +2,6 @@
 	import { browser } from '$app/environment';
 	import type { BrandColors } from '$lib/utils/colorUtils';
 	import { formatSelectedDate } from '$lib/utils/dateFormatters';
-	import BrandLogo from '$lib/components/BrandLogo.svelte';
-	import AlAvatar from '$lib/components/AlAvatar.svelte';
 
 	interface Props {
 		user: {
@@ -21,6 +19,8 @@
 		selectedSlot: { start: string; end: string } | null;
 		brandColor: string;
 		formatTime: (isoStr: string) => string;
+		displayName?: string;
+		displayDescription?: string;
 	}
 
 	let {
@@ -29,7 +29,9 @@
 		selectedDate,
 		selectedSlot,
 		brandColor,
-		formatTime
+		formatTime,
+		displayName,
+		displayDescription
 	}: Props = $props();
 
 	// Sanitize event description to prevent XSS (only in browser, SSR uses raw since admin-entered)
@@ -56,10 +58,6 @@
 </script>
 
 <div class="w-72 border-r border-border flex flex-col flex-shrink-0">
-	<div class="flex justify-center p-6 pb-0">
-		<BrandLogo />
-	</div>
-
 	{#if eventType?.cover_image}
 		<div class="p-6 pb-4 flex justify-center">
 			<img src={eventType.cover_image} alt="" class="max-h-16 w-auto object-contain" />
@@ -69,13 +67,8 @@
 
 	<div class="flex-1 p-6">
 		<div class="mb-6">
-			{#if user?.profileImage}
-				<img src={user.profileImage} alt={user.name} class="w-12 h-12 rounded-full object-cover mb-3" />
-			{:else}
-				<AlAvatar class="w-12 h-12 mb-3" />
-			{/if}
 			<p class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-1">{user?.name || 'Host'}</p>
-			<h1 class="font-display text-2xl font-medium text-text">{eventType?.name || 'Meeting'}</h1>
+			<h2 class="font-display text-2xl font-medium text-text">{displayName || eventType?.name || 'Meeting'}</h2>
 		</div>
 
 		<div class="space-y-4 font-meta text-extrasmall uppercase tracking-wide text-text-secondary">
@@ -93,10 +86,14 @@
 			</div>
 		</div>
 
-		{#if eventType?.description}
+		{#if displayDescription || eventType?.description}
 			<div class="mt-6 pt-6 border-t border-border">
 				<div class="text-sm text-text-secondary prose prose-sm max-w-none prose-headings:text-text prose-p:text-text-secondary prose-strong:text-text prose-a:text-accent prose-li:text-text-secondary [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1">
-					{@html sanitizedDescription}
+					{#if displayDescription}
+						<p>{displayDescription}</p>
+					{:else}
+						{@html sanitizedDescription}
+					{/if}
 				</div>
 			</div>
 		{/if}
