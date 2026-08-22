@@ -36,3 +36,15 @@ Found during live testing on a real iPhone (iOS Safari) and desktop against http
 
 - [ ] **Confirm the offered slots are correct on the live site** after setting timezone and hours there. Local and production have separate databases.
 - [ ] One local date (2026-08-31) still showed as bookable in the month grid while returning zero slots. Most likely a stale 5-minute KV cache entry populated before the fix above, but it was not conclusively re-tested after the TTL expired. Worth a look if the symptom reappears on production.
+
+## Round 2 — found by Computer Use testing on production (2026-08-22)
+
+- [x] **Every dashboard form input rendered invisible (white text on white).** FIXED (83f8393). The public restyle added a document-wide `<meta name="color-scheme" content="dark light">`, which makes the browser render all form controls with dark-scheme (light) text — including on the vanilla white dashboard, where `@tailwindcss/forms` paints input backgrounds white. Values were always present and correct in the DOM; they simply could not be seen. This is why the earlier time-format fix (87954ce) appeared not to work — that fix was correct, the data was fine, the text was invisible. Affected every input, not just the availability time fields: the booking-page URL box, email template fields, modal textareas. Proven by computing styles on an identical input in both contexts (before: `rgb(255,255,255)` on `rgb(255,255,255)`). The declaration now lives on `.public-flow` so only restyled pages opt in.
+
+- [ ] **Booking page dates briefly all-disabled after an availability change.** Reported during the same test: right after saving new hours, the calendar showed every date disabled; one reload made them selectable. Likely the 300s KV cache — the version bump should prevent this, so either the client held stale data or the invalidation did not fire on that path. Not reproduced since. Watch for it; if it recurs, check whether the dashboard availability save actually reaches `invalidateAvailabilityCache`.
+
+### Confirmed working on production in the same pass
+- Timezone (Pacific) and Mon–Fri 9–5 hours save correctly.
+- Week order is Sunday-first.
+- Booking page offers 9:00 AM–4:30 PM Pacific, no 2 AM slots — the timezone bug is genuinely resolved end to end.
+- Desktop dashboard has no horizontal overflow; all header controls including Logout are reachable.
