@@ -5,7 +5,14 @@
 		<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
 		<link rel="icon" type="image/png" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="color-scheme" content="dark light" />
+		<!--
+			Note: there is deliberately NO document-wide `color-scheme` meta here.
+			Declaring `dark light` globally makes the browser render EVERY form
+			control with dark-scheme (light) text, including on the vanilla white
+			dashboard, where @tailwindcss/forms paints the backgrounds white --
+			producing white-on-white invisible inputs. The public flow opts in
+			instead via `color-scheme` on .public-flow in app.css.
+		-->
 		%sveltekit.head%
 	</head>
 	<!--

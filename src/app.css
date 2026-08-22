@@ -77,6 +77,11 @@ Sections:
 	   applied globally so the dashboard (out of scope, still vanilla) is
 	   untouched. */
 	.public-flow {
+		/* Opt THIS subtree into the dark-first palette for UA-rendered form
+		   controls, scrollbars and pickers. Deliberately not global: see the
+		   note in app.html. */
+		color-scheme: dark light;
+
 		font-size: var(--text-body);
 		line-height: 160%;
 	}
