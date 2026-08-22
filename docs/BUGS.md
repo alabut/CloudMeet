@@ -48,3 +48,23 @@ Found during live testing on a real iPhone (iOS Safari) and desktop against http
 - Week order is Sunday-first.
 - Booking page offers 9:00 AM–4:30 PM Pacific, no 2 AM slots — the timezone bug is genuinely resolved end to end.
 - Desktop dashboard has no horizontal overflow; all header controls including Logout are reachable.
+
+## Round 3 — full attendee chain tested on production (2026-08-22)
+
+Ran book -> reschedule -> reschedule again -> cancel end to end against the live
+site at 375px, with `sandstone.security@proton.me` as the attendee. Booking id
+`3251bed9-...` stayed the same across both reschedules and the cancellation.
+
+### Passed
+- Booking succeeded; success screen landed scrolled to top, no horizontal overflow, and showed working **Reschedule** and **Cancel** links plus a real Google Meet URL.
+- **Reschedule worked twice in a row** — the thing that was previously impossible. Booking id preserved each time, new Meet link issued, "current booking" correctly reflected the previous reschedule.
+- Cancel succeeded with a clear confirmation screen.
+- Reschedule page rendered correctly at 375px with no sideways scroll (confirms the mobile fix on production).
+- Month grid populated correctly on first load, no reload needed.
+
+### Found
+
+- [ ] **Reschedule confirmation screen offers no way to reschedule again.** After rescheduling, the screen shows "Join Google Meet" and "Cancel" but no "Reschedule" link. A second reschedule is possible — it works via the URL, which is what the emailed link provides — but an attendee looking at that screen would conclude they can only cancel. Add a Reschedule link alongside Cancel. File: `src/routes/reschedule/[id]/+page.svelte`.
+
+- [ ] **A day can appear bookable in the month grid but offer zero times.** Reproduced on production: `2026-08-31` is listed in `/api/availability/month` yet `/api/availability?date=2026-08-31` returns `{"slots":[]}`. Same for `2026-09-14` locally. Both endpoints do check calendar busy times and their slot logic is equivalent, so the leading hypothesis is that the **month-wide Google freeBusy query returns a truncated set of busy periods**, causing the grid to under-detect conflicts, while the single-day query sees them all. Not confirmed — it would need a look at the host's actual calendar for those dates. Impact is mild: a visitor clicks a highlighted day and sees "No available times for this date", then picks another. Worth fixing, not worth blocking on.
+
