@@ -13,11 +13,11 @@ Baseline = the "working vanilla deploy" commit. Every item below is optional; ro
 - [x] **Reschedule page breaks on phones.** FIXED (9d89265) — layout stacks and goes full width below `md`; desktop keeps the 650/920px widths and the transition. Original diagnosis: `src/routes/reschedule/[id]/+page.svelte:204` hardcodes an inline `style="width: 650px"` (920px once a date is picked) with no mobile breakpoint, so the card overflows the viewport on a 375px screen. Pre-existing from upstream CloudMeet, not introduced by the restyle. Friends will hit this on their phones — fix before sharing.
 
 ## Needs setup (documented, not built)
-- [ ] Email notifications: Emailit API key + EMAIL_FROM, then deploy cron reminder worker (DEPLOY.md step 6)
+- [ ] Email notifications — **provider undecided.** Emailit is what upstream CloudMeet supports, but it was never checked against this project's zero-cost constraint; researching whether it or a free alternative (Resend, Brevo, etc.) fits. Note Cloudflare Workers cannot open raw SMTP, so any provider must have an HTTP API. Also note attendees ALREADY receive real Google Calendar invitations, so this only buys branded confirmations and reminder emails — a nice-to-have, not a blocker.
 - [ ] npm audit: 11 high transitive vulns — run `npm audit fix`, retest booking flow
 ## Investigations (scope before building — may not be feasible)
 - [ ] Zoom instead of Google Meet for meeting links: CloudMeet has no native Zoom support; investigate Zoom API (user has Pro account) → wiring a meeting-create call into the booking flow. Scope first, decide later.
-- [ ] Outlook calendar sync (documented in SETUP-NOTES.md, currently skipped)
+- ~~Outlook calendar sync~~ — **dropped 2026-08-22.** It connects the *host's* own Outlook calendar as an alternative to Google, for conflict-checking. Attendees are unaffected either way. Al uses Google, so this will never be used. The code path stays in the fork (it comes from upstream and is inert without `MICROSOFT_CLIENT_ID`/`SECRET`), but it is not a backlog item.
 
 ## Decisions made (not TODOs)
 - **Deploying stays manual, on purpose.** Git/GitHub is for history only — pushing does *not* update the live site. Publishing is one command from this folder: `npm run deploy` (builds locally, uploads straight to Cloudflare — a "Direct Upload" Pages project). Automating deploy-on-push isn't worth it at single-developer scale; revisit if commits get frequent or anyone else starts shipping.
