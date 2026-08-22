@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import BrandLogo from '$lib/components/BrandLogo.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -20,6 +21,7 @@
 		<div class="max-w-2xl mx-auto px-gutter">
 			<!-- User Header -->
 			<div class="text-center mb-10">
+				<BrandLogo class="mb-8" />
 				{#if data.user.profileImage}
 					<img
 						src={data.user.profileImage}
@@ -93,6 +95,7 @@
 		<div class="max-w-7xl mx-auto px-gutter py-12">
 		<!-- Header -->
 		<div class="text-center mb-16">
+			<BrandLogo class="mb-8" />
 			<h1 class="font-display text-5xl font-medium text-text mb-4">
 				Meeting Scheduler
 			</h1>

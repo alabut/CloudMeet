@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import type { BrandColors } from '$lib/utils/colorUtils';
 	import { formatSelectedDate } from '$lib/utils/dateFormatters';
+	import BrandLogo from '$lib/components/BrandLogo.svelte';
 
 	interface Props {
 		user: {
@@ -54,6 +55,10 @@
 </script>
 
 <div class="w-72 border-r border-border flex flex-col flex-shrink-0">
+	<div class="flex justify-center p-6 pb-0">
+		<BrandLogo />
+	</div>
+
 	{#if eventType?.cover_image}
 		<div class="p-6 pb-4 flex justify-center">
 			<img src={eventType.cover_image} alt="" class="max-h-16 w-auto object-contain" />

@@ -6,6 +6,7 @@
 	import { detectTimezone, getTimezoneLabel, getTimezoneWithTime, TIMEZONE_LABELS } from '$lib/constants/timezones';
 	import { formatDateLocal, formatSelectedDate, createFormatters } from '$lib/utils/dateFormatters';
 	import { BookingCalendar, TimeSlotList, BookingForm, BookingSuccess, EventSidebar } from '$lib/components/booking';
+	import BrandLogo from '$lib/components/BrandLogo.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -301,6 +302,12 @@
 	{:else}
 		<!-- MOBILE LAYOUT (< 768px) - Full white page -->
 		<div class="md:hidden min-h-screen w-full bg-bg">
+			{#if mobileStep === 'calendar'}
+				<div class="flex justify-center px-6 pt-6">
+					<BrandLogo />
+				</div>
+			{/if}
+
 			<!-- Cover Image with black line below -->
 			{#if data.eventType?.cover_image}
 				<div class="px-6 pt-6 flex justify-center">
