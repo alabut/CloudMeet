@@ -225,7 +225,7 @@ export async function sendAdminNotificationEmail(
 				Authorization: `Bearer ${config.apiKey}`
 			},
 			body: JSON.stringify({
-				from: `CloudMeet <${config.from}>`,
+				from: `Al Abut <${config.from}>`,
 				to: adminEmail,
 				subject: `New Booking: ${data.eventName} with ${data.attendeeName}`,
 				html: htmlBody
@@ -260,7 +260,7 @@ export async function sendAdminCancellationNotification(
 				Authorization: `Bearer ${config.apiKey}`
 			},
 			body: JSON.stringify({
-				from: `CloudMeet <${config.from}>`,
+				from: `Al Abut <${config.from}>`,
 				to: adminEmail,
 				subject: `Booking Cancelled: ${data.eventName} with ${data.attendeeName}`,
 				html: htmlBody
@@ -295,7 +295,7 @@ export async function sendAdminRescheduleNotification(
 				Authorization: `Bearer ${config.apiKey}`
 			},
 			body: JSON.stringify({
-				from: `CloudMeet <${config.from}>`,
+				from: `Al Abut <${config.from}>`,
 				to: adminEmail,
 				subject: `Booking Rescheduled: ${data.eventName} with ${data.attendeeName}`,
 				html: htmlBody

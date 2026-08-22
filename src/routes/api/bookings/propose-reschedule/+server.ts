@@ -259,7 +259,7 @@ async function sendRescheduleProposalEmail(data: RescheduleProposalEmailData, co
 						<td style="padding: 30px 40px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
 							<p style="margin: 0; color: #6b7280; font-size: 12px; line-height: 18px; text-align: center;">
 								This reschedule request was sent by ${data.hostName}.<br>
-								Powered by <a href="https://github.com/dennisklappe/CloudMeet" style="color: #6b7280; text-decoration: none;">CloudMeet</a>
+								Scheduling by <a href="https://alabut.com" style="color: #6b7280; text-decoration: none;">Al Abut</a>
 							</p>
 						</td>
 					</tr>

@@ -115,6 +115,6 @@ If you need to make changes or have any questions, please reply to this email or
 
 ---
 This is an automated email from ${data.hostName}'s meeting scheduler.
-Powered by CloudMeet - https://github.com/dennisklappe/CloudMeet
+Scheduling by Al Abut - https://alabut.com
 	`.trim();
 }

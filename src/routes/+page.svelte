@@ -15,6 +15,11 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Schedule with Al Abut</title>
+	<meta name="description" content="Choose a meeting type and schedule time with Al Abut." />
+</svelte:head>
+
 {#if data.user && data.eventTypes}
 	<!-- Event Types View -->
 	<div class="public-flow min-h-screen bg-bg text-text font-serif py-12">
