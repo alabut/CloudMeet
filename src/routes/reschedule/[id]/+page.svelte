@@ -198,7 +198,8 @@
 					</div>
 				</div>
 
-				<div class="flex items-center justify-center text-sm">
+				<div class="flex items-center justify-center gap-6 text-sm">
+					<a href={`/reschedule/${data.booking.id}`} class="pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors text-accent">Reschedule</a>
 					<a href={`/cancel/${data.booking.id}`} class="pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors text-accent">Cancel</a>
 				</div>
 			</div>
