@@ -12,11 +12,7 @@ import type { RequestHandler } from './$types';
 import { getBusyTimes, getValidAccessToken } from '$lib/server/google-calendar';
 import { getOutlookBusyTimes, getValidOutlookAccessToken } from '$lib/server/outlook-calendar';
 import { getDayCacheKey } from '$lib/server/availability-cache';
-
-interface TimeSlot {
-	start: string;
-	end: string;
-}
+import { generateAvailableSlots, type TimeSlot } from '$lib/server/availability-slots';
 
 export const GET: RequestHandler = async ({ url, platform }) => {
 	const env = platform?.env;
@@ -166,96 +162,15 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 			}))
 		];
 
-		// Generate available slots
-		const slots: TimeSlot[] = [];
-
-		// Helper to create a Date in user's timezone
-		// Takes a date string (YYYY-MM-DD) and time string (HH:MM) in user's timezone
-		// and returns a UTC Date
-		function createDateInTimezone(dateStr: string, timeStr: string, timezone: string): Date {
-			const [hour, minute] = timeStr.split(':').map(Number);
-			// Create a date string that represents the time in the user's timezone
-			const dateTimeStr = `${dateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
-
-			// Format the date in the target timezone to get the offset
-			const formatter = new Intl.DateTimeFormat('en-US', {
-				timeZone: timezone,
-				year: 'numeric',
-				month: '2-digit',
-				day: '2-digit',
-				hour: '2-digit',
-				minute: '2-digit',
-				second: '2-digit',
-				hour12: false
-			});
-
-			// Parse the target date/time and find the UTC equivalent
-			// We need to find what UTC time corresponds to this local time
-			const targetDate = new Date(dateTimeStr + 'Z'); // Start with UTC interpretation
-			const utcStr = targetDate.toISOString();
-
-			// Get what time it would be in the user's timezone if we used this UTC time
-			const parts = formatter.formatToParts(targetDate);
-			const tzHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
-			const tzMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
-
-			// Calculate the offset in minutes
-			const targetMinutes = hour * 60 + minute;
-			const actualMinutes = tzHour * 60 + tzMinute;
-			let offsetMinutes = actualMinutes - targetMinutes;
-
-			// Handle day boundary crossing
-			if (offsetMinutes > 12 * 60) offsetMinutes -= 24 * 60;
-			if (offsetMinutes < -12 * 60) offsetMinutes += 24 * 60;
-
-			// Adjust to get the correct UTC time
-			return new Date(targetDate.getTime() - offsetMinutes * 60 * 1000);
-		}
-
-		for (const rule of availabilityRules.results) {
-			// Create start and end times in user's timezone, converted to UTC
-			let currentTime = createDateInTimezone(date, rule.start_time, userTimezone);
-			const endTime = createDateInTimezone(date, rule.end_time, userTimezone);
-
-			// Generate slots every 30 minutes (or event duration, whichever is smaller)
-			const slotIncrement = Math.min(30, eventType.duration);
-
-			while (currentTime < endTime) {
-				const slotEnd = new Date(currentTime);
-				slotEnd.setMinutes(slotEnd.getMinutes() + eventType.duration);
-
-				// Check if slot end is within availability window
-				if (slotEnd > endTime) {
-					break;
-				}
-
-				// Check if slot is in the past
-				if (currentTime < new Date()) {
-					currentTime.setMinutes(currentTime.getMinutes() + slotIncrement);
-					continue;
-				}
-
-				// Check if slot conflicts with any busy time
-				const hasConflict = allBusySlots.some(busy => {
-					const busyStart = new Date(busy.start);
-					const busyEnd = new Date(busy.end);
-					return (
-						(currentTime >= busyStart && currentTime < busyEnd) ||
-						(slotEnd > busyStart && slotEnd <= busyEnd) ||
-						(currentTime <= busyStart && slotEnd >= busyEnd)
-					);
-				});
-
-				if (!hasConflict) {
-					slots.push({
-						start: currentTime.toISOString(),
-						end: slotEnd.toISOString()
-					});
-				}
-
-				currentTime.setMinutes(currentTime.getMinutes() + slotIncrement);
-			}
-		}
+		// Generate available slots (shared with the month endpoint - see
+		// availability-slots.ts for why this isn't duplicated here).
+		const slots: TimeSlot[] = generateAvailableSlots({
+			dateStr: date,
+			rules: availabilityRules.results,
+			timezone: userTimezone,
+			durationMinutes: eventType.duration,
+			busySlots: allBusySlots
+		});
 
 		// Cache response in KV for 5 minutes
 		await env.KV.put(cacheKey, JSON.stringify({ slots }), { expirationTtl: 60 /* KV minimum. Bounds staleness when a cache-version
