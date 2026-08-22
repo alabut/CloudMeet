@@ -84,7 +84,7 @@
 				bind:value={searchQuery}
 				type="text"
 				placeholder="Search..."
-				class="w-full pl-10 pr-4 py-2 text-sm rounded-lg focus:ring-2 focus:border-transparent outline-none {themed ? 'bg-bg-secondary border border-border text-text placeholder:text-text-secondary' : 'border border-gray-200'}"
+				class="w-full pl-10 pr-4 py-2 rounded-lg focus:ring-2 focus:border-transparent outline-none {themed ? 'bg-bg-secondary border border-border text-text placeholder:text-text-secondary' : 'border border-gray-200'}"
 				style="--tw-ring-color: {brandColor}"
 			/>
 		</div>

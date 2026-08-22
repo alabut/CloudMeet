@@ -502,7 +502,7 @@
 								id="mobile-name"
 								bind:value={bookingForm.name}
 								required
-								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none text-sm"
+								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
 							/>
 						</div>
 						<div>
@@ -512,7 +512,7 @@
 								id="mobile-email"
 								bind:value={bookingForm.email}
 								required
-								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none text-sm"
+								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
 							/>
 						</div>
 						<div>
@@ -523,7 +523,7 @@
 								id="mobile-notes"
 								bind:value={bookingForm.notes}
 								rows="4"
-								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none resize-none text-sm"
+								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none resize-none"
 							></textarea>
 						</div>
 						<button

@@ -105,7 +105,7 @@
 						name="reason"
 						bind:value={reason}
 						rows="3"
-						class="w-full px-3 py-2 bg-bg-secondary border border-border rounded-large text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none text-sm"
+						class="w-full px-3 py-2 bg-bg-secondary border border-border rounded-large text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
 						placeholder="Let the host know why you're cancelling..."
 					></textarea>
 				</div>

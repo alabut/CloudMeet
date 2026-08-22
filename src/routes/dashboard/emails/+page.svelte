@@ -260,7 +260,7 @@
 												type="text"
 												bind:value={editSubjects[template.template_type]}
 												placeholder={template.default_subject}
-												class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+												class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 											/>
 										</div>
 
@@ -272,7 +272,7 @@
 												bind:value={editMessages[template.template_type]}
 												placeholder="Add a personal message that will appear in the email..."
 												rows="3"
-												class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+												class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 											></textarea>
 											<p class="text-xs text-gray-500 mt-1">This message will be added to the email template</p>
 										</div>
@@ -352,7 +352,7 @@
 												type="text"
 												bind:value={editSubjects[template.template_type]}
 												placeholder={template.default_subject}
-												class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+												class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 											/>
 										</div>
 
@@ -364,7 +364,7 @@
 												bind:value={editMessages[template.template_type]}
 												placeholder="Add a personal message that will appear in the reminder..."
 												rows="3"
-												class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+												class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 											></textarea>
 										</div>
 

@@ -176,13 +176,13 @@
 									<input
 										type="time"
 										bind:value={day.startTime}
-										class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+										class="px-3 py-2 border border-gray-300 rounded-md"
 									/>
 									<span class="text-gray-600">to</span>
 									<input
 										type="time"
 										bind:value={day.endTime}
-										class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+										class="px-3 py-2 border border-gray-300 rounded-md"
 									/>
 								</div>
 							{:else}

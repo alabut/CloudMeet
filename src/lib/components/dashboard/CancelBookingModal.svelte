@@ -73,7 +73,7 @@
 						bind:value={cancelMessage}
 						placeholder="Let them know why you're cancelling..."
 						rows="3"
-						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
 					></textarea>
 					<p class="text-xs text-gray-500 mt-1">This message will be included in the cancellation email</p>
 				</div>

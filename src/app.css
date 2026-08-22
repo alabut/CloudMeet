@@ -58,6 +58,14 @@ Sections:
 			/* --accent and --accent-hover stay the same in both themes */
 		}
 	}
+
+	/* iOS Safari auto-zooms focused inputs below 16px and does not zoom back out.
+	   Guarantee a 16px floor on every form control. */
+	input,
+	textarea,
+	select {
+		font-size: 16px;
+	}
 }
 
 @layer components {
