@@ -30,7 +30,7 @@
 </script>
 
 <!-- ===== USER STYLE ANCHOR: availability-slot-picker (time slots) ===== -->
-<div class="w-52 ml-6 border-l border-border pl-6 flex flex-col" style="max-height: 400px;">
+<div class="w-52 ml-6 border-l border-border pl-6 flex flex-col min-h-0" style="max-height: 400px;">
 	<h3 class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-4 flex-shrink-0">
 		{formatSelectedDate(selectedDate).split(',')[0]}
 	</h3>
@@ -42,33 +42,41 @@
 	{:else if availableSlots.length === 0}
 		<p class="text-sm text-text-secondary py-4">No available times</p>
 	{:else}
-		<div class="space-y-2 overflow-y-auto flex-1 pr-2 pb-2 scrollbar-thin">
+		<div class="space-y-2 overflow-y-auto flex-1 min-h-0 pr-2 scrollbar-thin">
 			{#each availableSlots as slot}
-				{#if selectedSlot === slot}
-					<div class="flex gap-2">
-						<button type="button" class="flex-1 py-2.5 px-3 border-2 border-accent bg-accent text-white rounded-lg text-sm font-semibold">
-							{formatTime(slot.start)}
-						</button>
-						<button
-							type="button"
-							onclick={onConfirm}
-							class="flex-1 py-2.5 px-3 text-white rounded-lg text-sm font-semibold transition hover:opacity-90"
-							style="background-color: {brandColor}"
-						>
-							Next
-						</button>
-					</div>
-				{:else}
-					<button
-						type="button"
-						onclick={() => onSelectSlot(slot)}
-						class="w-full py-2.5 px-3 border-2 rounded-lg text-sm font-semibold transition"
-						style="border-color: {brandColor}; color: {brandColor}"
-					>
-						{formatTime(slot.start)}
-					</button>
-				{/if}
+				<button
+					type="button"
+					onclick={() => onSelectSlot(slot)}
+					class="w-full py-2.5 px-3 border-2 rounded-lg text-sm font-semibold transition"
+					class:border-accent={selectedSlot === slot}
+					class:bg-accent={selectedSlot === slot}
+					class:text-white={selectedSlot === slot}
+					style={selectedSlot === slot ? '' : `border-color: ${brandColor}; color: ${brandColor}`}
+				>
+					{formatTime(slot.start)}
+				</button>
 			{/each}
 		</div>
+
+		{#if selectedSlot}
+			<div class="flex-shrink-0 pt-3 mt-2 border-t border-border">
+				<div class="flex gap-2">
+					<button
+						type="button"
+						class="flex-1 py-2.5 px-3 border-2 border-accent bg-accent text-white rounded-lg text-sm font-semibold"
+					>
+						{formatTime(selectedSlot.start)}
+					</button>
+					<button
+						type="button"
+						onclick={onConfirm}
+						class="flex-1 py-2.5 px-3 text-white rounded-lg text-sm font-semibold transition hover:opacity-90"
+						style="background-color: {brandColor}"
+					>
+						Next
+					</button>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>
