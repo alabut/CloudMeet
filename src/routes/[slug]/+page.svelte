@@ -7,6 +7,7 @@
 	import { formatDateLocal, formatSelectedDate, createFormatters } from '$lib/utils/dateFormatters';
 	import { BookingCalendar, TimeSlotList, BookingForm, BookingSuccess, EventSidebar } from '$lib/components/booking';
 	import BrandLogo from '$lib/components/BrandLogo.svelte';
+	import AlAvatar from '$lib/components/AlAvatar.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -336,9 +337,7 @@
 					{#if data.user?.profileImage}
 						<img src={data.user.profileImage} alt={data.user.name} class="w-24 h-24 rounded-full object-cover border-4 border-bg shadow-lg" />
 					{:else}
-						<div class="w-24 h-24 rounded-full flex items-center justify-center text-white font-semibold text-3xl border-4 border-bg shadow-lg" style="background-color: var(--brand-color)">
-							{data.user?.name?.charAt(0) || 'M'}
-						</div>
+						<AlAvatar class="w-24 h-24 border-4 border-bg shadow-lg" />
 					{/if}
 					<p class="mt-4 font-meta text-extrasmall uppercase tracking-wide text-text-secondary">{data.user?.name || 'Host'}</p>
 				</div>

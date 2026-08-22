@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import BrandLogo from '$lib/components/BrandLogo.svelte';
+	import AlAvatar from '$lib/components/AlAvatar.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -34,9 +35,7 @@
 						class="w-24 h-24 rounded-full mx-auto mb-4 object-cover border-4 border-bg shadow-lg"
 					/>
 				{:else}
-					<div class="w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center text-white font-semibold text-3xl border-4 border-bg shadow-lg" style="background-color: var(--accent)">
-						{data.user.name?.charAt(0) || 'U'}
-					</div>
+					<AlAvatar class="w-24 h-24 mx-auto mb-4 border-4 border-bg shadow-lg" />
 				{/if}
 				<h1 class="font-display text-3xl font-medium text-text mb-2">{data.user.name}</h1>
 				<p class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary">Select a meeting type to book a time</p>

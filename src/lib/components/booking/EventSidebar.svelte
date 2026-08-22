@@ -3,6 +3,7 @@
 	import type { BrandColors } from '$lib/utils/colorUtils';
 	import { formatSelectedDate } from '$lib/utils/dateFormatters';
 	import BrandLogo from '$lib/components/BrandLogo.svelte';
+	import AlAvatar from '$lib/components/AlAvatar.svelte';
 
 	interface Props {
 		user: {
@@ -71,9 +72,7 @@
 			{#if user?.profileImage}
 				<img src={user.profileImage} alt={user.name} class="w-12 h-12 rounded-full object-cover mb-3" />
 			{:else}
-				<div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg mb-3" style="background-color: {brandColor}">
-					{user?.name?.charAt(0) || 'M'}
-				</div>
+				<AlAvatar class="w-12 h-12 mb-3" />
 			{/if}
 			<p class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-1">{user?.name || 'Host'}</p>
 			<h1 class="font-display text-2xl font-medium text-text">{eventType?.name || 'Meeting'}</h1>
