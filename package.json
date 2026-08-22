@@ -12,7 +12,8 @@
     "db:init": "wrangler d1 execute cloudmeet --local --file=./schema.sql",
     "db:init:remote": "wrangler d1 execute cloudmeet --file=./schema.sql",
     "deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare",
-    "prebuild": "node scripts/prebuild.js"
+    "prebuild": "node scripts/prebuild.js",
+    "check:dashboard": "node scripts/dev-dashboard-check.mjs"
   },
   "keywords": [
     "calendly",
