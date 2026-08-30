@@ -67,9 +67,18 @@
 
 	<div class="flex-1 p-6">
 		<div class="mb-6">
-			<p class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-1">{user?.name || 'Host'}</p>
 			<h2 class="font-display text-2xl font-medium text-text">{displayName || eventType?.name || 'Meeting'}</h2>
 		</div>
+
+		{#if displayDescription || eventType?.description}
+			<div class="mb-6 text-sm text-text-secondary prose prose-sm max-w-none prose-headings:text-text prose-p:text-text-secondary prose-strong:text-text prose-a:text-accent prose-li:text-text-secondary [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1">
+				{#if displayDescription}
+					<p>{displayDescription}</p>
+				{:else}
+					{@html sanitizedDescription}
+				{/if}
+			</div>
+		{/if}
 
 		<div class="space-y-4 font-meta text-extrasmall uppercase tracking-wide text-text-secondary">
 			<div class="flex items-center gap-3">
@@ -85,18 +94,6 @@
 				<span>{meetingLabel}</span>
 			</div>
 		</div>
-
-		{#if displayDescription || eventType?.description}
-			<div class="mt-6 pt-6 border-t border-border">
-				<div class="text-sm text-text-secondary prose prose-sm max-w-none prose-headings:text-text prose-p:text-text-secondary prose-strong:text-text prose-a:text-accent prose-li:text-text-secondary [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1">
-					{#if displayDescription}
-						<p>{displayDescription}</p>
-					{:else}
-						{@html sanitizedDescription}
-					{/if}
-				</div>
-			</div>
-		{/if}
 
 		{#if selectedDate && selectedSlot}
 			<div class="mt-6 pt-6 border-t border-border">

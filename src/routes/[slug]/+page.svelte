@@ -277,6 +277,7 @@
 	const displayDescription = $derived(data.slug === '30min'
 		? 'Pick a time for a conversation about product design, startups, or whatever brought you here.'
 		: '');
+	const schedulerHeading = $derived(data.slug === '30min' ? 'Select a Date & Time' : displayEventName);
 </script>
 
 <svelte:head>
@@ -333,8 +334,19 @@
 			{#if mobileStep === 'calendar'}
 				<!-- Meeting Title -->
 				<div class="px-6 pt-1 pb-5">
-					<h2 class="font-display text-2xl font-medium text-text text-center">{displayEventName}</h2>
+					<h2 class="font-display text-2xl font-medium text-text text-center">{schedulerHeading}</h2>
 				</div>
+
+				<!-- Description -->
+				{#if displayDescription || data.eventType?.description}
+					<div class="px-6 pb-5 text-text-secondary prose prose-sm max-w-none prose-headings:text-text prose-p:text-text-secondary prose-strong:text-text prose-a:text-accent prose-li:text-text-secondary">
+						{#if displayDescription}
+							<p>{displayDescription}</p>
+						{:else}
+							{@html sanitizedDescription}
+						{/if}
+					</div>
+				{/if}
 
 				<!-- Meeting Details List -->
 				<div class="px-6 pb-5">
@@ -380,23 +392,14 @@
 					{/if}
 				</div>
 
-				<!-- Description -->
-				{#if displayDescription || data.eventType?.description}
-					<div class="px-6 pb-5 text-text-secondary prose prose-sm max-w-none prose-headings:text-text prose-p:text-text-secondary prose-strong:text-text prose-a:text-accent prose-li:text-text-secondary">
-						{#if displayDescription}
-							<p>{displayDescription}</p>
-						{:else}
-							{@html sanitizedDescription}
-						{/if}
-					</div>
-				{/if}
-
 				<!-- Breakline / Divider -->
 				<div class="border-b border-border mx-6 mb-6"></div>
 
 				<!-- Calendar with arrows around month name -->
 				<div class="px-6 pb-8">
-					<h2 class="font-display text-lg font-medium text-text mb-5 text-center">Select a Date & Time</h2>
+					{#if data.slug !== '30min'}
+						<h2 class="font-display text-lg font-medium text-text mb-5 text-center">Select a Date & Time</h2>
+					{/if}
 
 					<!-- Month navigation with arrows on sides -->
 					<div class="flex items-center justify-between mb-4">
@@ -550,7 +553,7 @@
 				{selectedSlot}
 				{brandColor}
 				{formatTime}
-				displayName={displayEventName}
+				displayName={schedulerHeading}
 				{displayDescription}
 			/>
 
@@ -574,7 +577,9 @@
 				{:else}
 					<div class="flex items-stretch">
 						<div class="w-80">
-							<h2 class="font-display text-xl font-medium text-text mb-6">Select a Date & Time</h2>
+							{#if data.slug !== '30min'}
+								<h2 class="font-display text-xl font-medium text-text mb-6">Select a Date & Time</h2>
+							{/if}
 
 							<BookingCalendar
 								{currentMonth}
