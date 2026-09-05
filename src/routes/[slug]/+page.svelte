@@ -275,9 +275,9 @@
 	const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 	const displayEventName = $derived(data.slug === '30min' ? '30-minute conversation' : (data.eventType?.name || 'Meeting'));
 	const displayDescription = $derived(data.slug === '30min'
-		? 'Pick a time for a conversation about product design, startups, or whatever brought you here.'
+		? "Let's talk about product design, startups or anything else."
 		: '');
-	const schedulerHeading = $derived(data.slug === '30min' ? 'Select a Date & Time' : displayEventName);
+	const schedulerHeading = $derived(data.slug === '30min' ? 'Select a date and time' : displayEventName);
 </script>
 
 <svelte:head>
@@ -332,16 +332,13 @@
 			{/if}
 
 			{#if mobileStep === 'calendar'}
-				<!-- Meeting Title -->
-				<div class="px-6 pt-1 pb-5">
-					<h2 class="font-display text-2xl font-medium text-text text-center">{schedulerHeading}</h2>
-				</div>
+				<hr class="mt-5 mb-[30px] ml-[25%] w-1/2 border-t border-white/10" />
 
 				<!-- Description -->
 				{#if displayDescription || data.eventType?.description}
 					<div class="px-6 pb-5 text-text-secondary prose prose-sm max-w-none prose-headings:text-text prose-p:text-text-secondary prose-strong:text-text prose-a:text-accent prose-li:text-text-secondary">
 						{#if displayDescription}
-							<p>{displayDescription}</p>
+							<p class="text-center"><strong>{schedulerHeading}</strong><br /> {displayDescription}</p>
 						{:else}
 							{@html sanitizedDescription}
 						{/if}
@@ -393,7 +390,7 @@
 				</div>
 
 				<!-- Breakline / Divider -->
-				<div class="border-b border-border mx-6 mb-6"></div>
+				<hr class="mt-5 mb-[30px] ml-[25%] w-1/2 border-t border-white/10" />
 
 				<!-- Calendar with arrows around month name -->
 				<div class="px-6 pb-8">
