@@ -332,7 +332,7 @@
 			{/if}
 
 			{#if mobileStep === 'calendar'}
-				<hr class="mt-5 mb-[30px] ml-[25%] w-1/2 border-t border-white/10" />
+				<hr class="mt-5 mb-[30px] ml-[25%] w-1/2 border-t border-border" />
 
 				<!-- Description -->
 				{#if displayDescription || data.eventType?.description}
@@ -390,7 +390,7 @@
 				</div>
 
 				<!-- Breakline / Divider -->
-				<hr class="mt-5 mb-[30px] ml-[25%] w-1/2 border-t border-white/10" />
+				<hr class="mt-5 mb-[30px] ml-[25%] w-1/2 border-t border-border" />
 
 				<!-- Calendar with arrows around month name -->
 				<div class="px-6 pb-8">
