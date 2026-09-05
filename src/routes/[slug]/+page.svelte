@@ -172,7 +172,14 @@
 			if (!response.ok) throw new Error('Failed to fetch availability');
 
 			const result = await response.json() as { availableDates?: string[] };
-			availableDates = new Set(result.availableDates || []);
+			const dates = result.availableDates || [];
+			availableDates = new Set(dates);
+
+			// Desktop always opens in the complete three-panel view. Mobile keeps its
+			// explicit date-first flow so its finished interaction remains unchanged.
+			if (browser && window.matchMedia('(min-width: 768px)').matches && !selectedDate && dates.length > 0) {
+				void handleDateSelect([...dates].sort()[0], false);
+			}
 		} catch (error) {
 			console.error('Error fetching month availability:', error);
 			availableDates = new Set();
@@ -194,12 +201,12 @@
 		}
 	});
 
-	async function handleDateSelect(dateStr: string) {
+	async function handleDateSelect(dateStr: string, advanceMobile = true) {
 		selectedDate = dateStr;
 		selectedSlot = null;
 		showForm = false;
 		loading = true;
-		mobileStep = 'times';
+		if (advanceMobile) mobileStep = 'times';
 
 		try {
 			const response = await fetch(`/api/availability?event=${data.slug}&date=${dateStr}`);
@@ -278,6 +285,7 @@
 		? "Let's talk about product design, startups or anything else."
 		: '');
 	const schedulerHeading = $derived(data.slug === '30min' ? 'Select a date and time' : displayEventName);
+	const desktopSchedulerHeading = $derived(data.slug === '30min' ? 'Select a time' : displayEventName);
 </script>
 
 <svelte:head>
@@ -548,7 +556,7 @@
 				{selectedSlot}
 				{brandColor}
 				{formatTime}
-				displayName={schedulerHeading}
+				displayName={desktopSchedulerHeading}
 				{displayDescription}
 				timezoneLabel={getTimezoneWithTime(selectedTimezone, use12Hour)}
 				{selectedTimezone}
