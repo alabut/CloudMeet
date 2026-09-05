@@ -539,7 +539,7 @@
 
 		<!-- DESKTOP LAYOUT (>= 768px) -->
 		<div class="hidden w-full max-w-[920px] md:block">
-		<div class="flex min-h-[440px] bg-bg border border-border rounded-large overflow-hidden transition-[width] duration-300 ease-in-out" style="width: {showForm ? '700px' : selectedDate ? '920px' : '664px'}">
+		<div class="flex min-h-[440px] w-full bg-bg border border-border rounded-large overflow-hidden">
 			<!-- Left Sidebar -->
 			<EventSidebar
 				user={data.user}
@@ -579,8 +579,8 @@
 					</div>
 				{:else}
 					<div class="flex min-h-[440px] items-stretch">
-						<div class="w-[408px] shrink-0 p-6">
-						<div class="w-[360px]">
+						<div class={selectedDate ? 'w-[408px] shrink-0 p-6' : 'flex min-w-0 flex-1 justify-center p-6'}>
+						<div class="w-[360px] max-w-full">
 							{#if data.slug !== '30min'}
 								<h2 class="font-display text-xl font-medium text-text mb-6">Select a Date & Time</h2>
 							{/if}
