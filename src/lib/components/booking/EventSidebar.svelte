@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
 	import type { BrandColors } from '$lib/utils/colorUtils';
 	import { formatSelectedDate } from '$lib/utils/dateFormatters';
 
@@ -21,6 +22,12 @@
 		formatTime: (isoStr: string) => string;
 		displayName?: string;
 		displayDescription?: string;
+		timezoneLabel: string;
+		selectedTimezone: string;
+		showTimezoneDropdown: boolean;
+		onTimezoneToggle: () => void;
+		onTimezoneSelect: (timezone: string) => void;
+		onTimezoneClose: () => void;
 	}
 
 	let {
@@ -31,7 +38,13 @@
 		brandColor,
 		formatTime,
 		displayName,
-		displayDescription
+		displayDescription,
+		timezoneLabel,
+		selectedTimezone,
+		showTimezoneDropdown,
+		onTimezoneToggle,
+		onTimezoneSelect,
+		onTimezoneClose
 	}: Props = $props();
 
 	// Sanitize event description to prevent XSS (only in browser, SSR uses raw since admin-entered)
@@ -57,7 +70,7 @@
 	const meetingLabel = eventType?.invite_calendar === 'outlook' ? 'Microsoft Teams' : 'Google Meet';
 </script>
 
-<div class="w-72 border-r border-border flex flex-col flex-shrink-0">
+<div class="w-64 border-r border-border flex flex-col flex-shrink-0">
 	{#if eventType?.cover_image}
 		<div class="p-6 pb-4 flex justify-center">
 			<img src={eventType.cover_image} alt="" class="max-h-16 w-auto object-contain" />
@@ -92,6 +105,26 @@
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
 				</svg>
 				<span>{meetingLabel}</span>
+			</div>
+			<div class="relative flex items-start gap-3">
+				<svg class="mt-0.5 w-5 h-5 shrink-0 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+				</svg>
+				<button type="button" onclick={onTimezoneToggle} class="flex min-w-0 items-center gap-1 text-left hover:text-accent transition">
+					<span class="whitespace-nowrap text-[11px] normal-case tracking-normal">{timezoneLabel}</span>
+					<svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+					</svg>
+				</button>
+				{#if showTimezoneDropdown}
+					<TimezoneSelector
+						{selectedTimezone}
+						onSelect={onTimezoneSelect}
+						onClose={onTimezoneClose}
+						{brandColor}
+						themed
+					/>
+				{/if}
 			</div>
 		</div>
 

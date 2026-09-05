@@ -538,7 +538,8 @@
 		</div>
 
 		<!-- DESKTOP LAYOUT (>= 768px) -->
-		<div class="hidden md:flex bg-bg border border-border rounded-large shadow-lg overflow-hidden transition-all duration-300 ease-in-out" style="width: {showForm ? '700px' : selectedDate ? '920px' : '650px'}">
+		<div class="hidden w-full max-w-[920px] md:block">
+		<div class="flex min-h-[440px] bg-bg border border-border rounded-large overflow-hidden transition-[width] duration-300 ease-in-out" style="width: {showForm ? '700px' : selectedDate ? '920px' : '664px'}">
 			<!-- Left Sidebar -->
 			<EventSidebar
 				user={data.user}
@@ -549,17 +550,24 @@
 				{formatTime}
 				displayName={schedulerHeading}
 				{displayDescription}
+				timezoneLabel={getTimezoneWithTime(selectedTimezone, use12Hour)}
+				{selectedTimezone}
+				{showTimezoneDropdown}
+				onTimezoneToggle={() => showTimezoneDropdown = !showTimezoneDropdown}
+				onTimezoneSelect={(tz) => selectedTimezone = tz}
+				onTimezoneClose={() => showTimezoneDropdown = false}
 			/>
 
 			<!-- Main Content -->
-			<div class="flex-1 p-6">
+			<div class="flex-1">
 				{#if bookingError}
-					<div class="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg p-4 mb-6 max-w-2xl">
+					<div class="m-6 mb-0 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg p-4 max-w-2xl">
 						{bookingError}
 					</div>
 				{/if}
 
 				{#if showForm}
+					<div class="p-6">
 					<BookingForm
 						bind:bookingForm
 						{bookingStatus}
@@ -568,9 +576,11 @@
 						{brandDark}
 						onSubmit={handleSubmit}
 					/>
+					</div>
 				{:else}
-					<div class="flex items-stretch">
-						<div class="w-80">
+					<div class="flex min-h-[440px] items-stretch">
+						<div class="w-[408px] shrink-0 p-6">
+						<div class="w-[360px]">
 							{#if data.slug !== '30min'}
 								<h2 class="font-display text-xl font-medium text-text mb-6">Select a Date & Time</h2>
 							{/if}
@@ -586,32 +596,7 @@
 								onPrevMonth={prevMonth}
 								onNextMonth={nextMonth}
 							/>
-
-							<div class="mt-6 relative">
-								<p class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-2">Time zone</p>
-								<button
-									type="button"
-									onclick={() => showTimezoneDropdown = !showTimezoneDropdown}
-									class="flex items-center gap-2 text-sm text-text-secondary hover:text-accent transition"
-								>
-									<svg class="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-									</svg>
-									<span>{getTimezoneWithTime(selectedTimezone, use12Hour)}</span>
-									<svg class="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-									</svg>
-								</button>
-								{#if showTimezoneDropdown}
-									<TimezoneSelector
-										{selectedTimezone}
-										onSelect={(tz) => selectedTimezone = tz}
-										onClose={() => showTimezoneDropdown = false}
-										{brandColor}
-										themed
-									/>
-								{/if}
-							</div>
+						</div>
 						</div>
 
 						{#if selectedDate}
@@ -629,6 +614,7 @@
 					</div>
 				{/if}
 			</div>
+		</div>
 		</div>
 
 	{/if}

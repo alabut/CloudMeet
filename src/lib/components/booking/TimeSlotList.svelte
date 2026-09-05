@@ -30,9 +30,9 @@
 </script>
 
 <!-- ===== USER STYLE ANCHOR: availability-slot-picker (time slots) ===== -->
-<div class="w-52 ml-6 border-l border-border pl-6 flex flex-col min-h-0" style="max-height: 400px;">
-	<h3 class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-4 flex-shrink-0">
-		{formatSelectedDate(selectedDate).split(',')[0]}
+<div class="w-64 shrink-0 border-l border-border p-6 flex flex-col min-h-0" style="max-height: 440px;">
+	<h3 class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-4 flex-shrink-0 leading-relaxed">
+		{formatSelectedDate(selectedDate)}
 	</h3>
 
 	{#if loading}
@@ -40,7 +40,10 @@
 			<div class="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style="border-color: {brandColor}; border-top-color: transparent"></div>
 		</div>
 	{:else if availableSlots.length === 0}
-		<p class="text-sm text-text-secondary py-4">No available times</p>
+		<div class="py-4">
+			<p class="text-sm font-medium text-text">No times available</p>
+			<p class="mt-2 text-sm leading-relaxed text-text-secondary">Choose another highlighted date.</p>
+		</div>
 	{:else}
 		<div class="space-y-2 overflow-y-auto flex-1 min-h-0 pr-2 scrollbar-thin">
 			{#each availableSlots as slot}

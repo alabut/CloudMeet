@@ -113,13 +113,19 @@
 				disabled={!isClickable}
 				class="aspect-square flex items-center justify-center text-sm rounded-full transition relative text-text-secondary
 					{!day.isCurrentMonth ? 'opacity-40' : ''}
-					{isClickable && !isSelected ? 'font-semibold cursor-pointer' : ''}
+					{isClickable && !isSelected ? 'available-date font-semibold cursor-pointer' : ''}
 					{!day.isAvailable && day.isCurrentMonth ? 'opacity-40 cursor-not-allowed' : ''}
 					{isSelected ? 'text-white' : ''}"
-				style="{isClickable && !isSelected ? `background-color: ${brandLighter}; color: var(--accent)` : ''}{isSelected ? `background-color: ${brandColor}` : ''}"
+				style="{isClickable && !isSelected ? `--available-hover: ${brandLighter}; color: var(--accent)` : ''}{isSelected ? `background-color: ${brandColor}` : ''}"
 			>
 				{day.date.getDate()}
 			</button>
 		{/each}
 	</div>
 </div>
+
+<style>
+	.available-date:hover {
+		background-color: var(--available-hover);
+	}
+</style>
