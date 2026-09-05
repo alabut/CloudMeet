@@ -17,6 +17,10 @@ declare global {
 				EMAIL_FROM?: string;
 				TURNSTILE_SECRET_KEY?: string;
 				CRON_SECRET?: string;
+				/** Recurring Zoom Pro meeting URL for Google Calendar–backed bookings */
+				ZOOM_MEETING_URL?: string;
+				MICROSOFT_CLIENT_ID?: string;
+				MICROSOFT_CLIENT_SECRET?: string;
 			};
 			context: {
 				waitUntil(promise: Promise<any>): void;

@@ -3,6 +3,7 @@
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
 	import type { BrandColors } from '$lib/utils/colorUtils';
 	import { formatSelectedDate } from '$lib/utils/dateFormatters';
+	import { meetingShortLabel, meetingTypeForInviteCalendar } from '$lib/meeting';
 
 	interface Props {
 		user: {
@@ -67,7 +68,7 @@
 		}
 	});
 
-	const meetingLabel = eventType?.invite_calendar === 'outlook' ? 'Microsoft Teams' : 'Google Meet';
+	const meetingLabel = meetingShortLabel(meetingTypeForInviteCalendar(eventType?.invite_calendar));
 </script>
 
 <div class="w-64 border-r border-border flex flex-col flex-shrink-0">

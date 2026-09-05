@@ -5,6 +5,7 @@
 import type { BookingEmailData } from '../types';
 import { createEmailFormatters } from '../formatters';
 import { generateBaseEmail, generateAttendeeNotesCard, generateActionButton } from './base';
+import { meetingJoinLabel } from '$lib/meeting';
 
 /**
  * Generate HTML email for admin notification (new booking)
@@ -21,9 +22,9 @@ export function generateAdminNotificationEmail(data: BookingEmailData): string {
 		? generateAttendeeNotesCard(data.attendeeName, data.attendeeNotes)
 		: '';
 
-	const meetingLabel = data.meetingType === 'teams' ? 'Join Microsoft Teams Meeting' : 'Join Google Meet';
+	const joinLabel = meetingJoinLabel(data.meetingType || 'zoom');
 	const actionButton = data.meetingUrl
-		? generateActionButton(data.meetingUrl, meetingLabel, brandColor)
+		? generateActionButton(data.meetingUrl, joinLabel, brandColor)
 		: '';
 
 	const bodyContent = `

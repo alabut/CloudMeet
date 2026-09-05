@@ -2,6 +2,9 @@
  * Base email template structure
  */
 
+import type { MeetingType } from '$lib/meeting';
+import { meetingShortLabel } from '$lib/meeting';
+
 export interface BaseTemplateOptions {
 	title: string;
 	headerGradient: string;
@@ -69,11 +72,11 @@ export function generateMeetingDetailsCard(options: {
 	formattedDate: string;
 	formattedTime: string;
 	meetingUrl?: string | null;
-	meetingType?: 'google_meet' | 'teams';
+	meetingType?: MeetingType;
 	brandColor?: string;
 }): string {
-	const { eventName, eventDescription, formattedDate, formattedTime, meetingUrl, meetingType = 'google_meet', brandColor = '#3b82f6' } = options;
-	const meetingLabel = meetingType === 'teams' ? 'Microsoft Teams' : 'Google Meet';
+	const { eventName, eventDescription, formattedDate, formattedTime, meetingUrl, meetingType = 'zoom', brandColor = '#3b82f6' } = options;
+	const meetingLabel = meetingShortLabel(meetingType);
 
 	return `
 <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 30px;">

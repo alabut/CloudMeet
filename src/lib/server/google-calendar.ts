@@ -160,6 +160,7 @@ export async function createCalendarEvent(
 	event: {
 		summary: string;
 		description?: string;
+		location?: string;
 		start: { dateTime: string; timeZone: string };
 		end: { dateTime: string; timeZone: string };
 		attendees?: Array<{ email: string }>;
@@ -172,8 +173,13 @@ export async function createCalendarEvent(
 	},
 	calendarId: string = 'primary'
 ): Promise<CalendarEvent> {
+	const params = new URLSearchParams({ sendUpdates: 'all' });
+	if (event.conferenceData) {
+		params.set('conferenceDataVersion', '1');
+	}
+
 	const response = await fetch(
-		`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1&sendUpdates=all`,
+		`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
 		{
 			method: 'POST',
 			headers: {

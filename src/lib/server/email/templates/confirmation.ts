@@ -11,6 +11,7 @@ import {
 	generateActionButton,
 	generateManagementLinks
 } from './base';
+import { meetingJoinLabel } from '$lib/meeting';
 
 /**
  * Generate HTML email template for booking confirmation
@@ -32,7 +33,7 @@ export function generateBookingEmail(data: BookingEmailData): string {
 		<h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Meeting Confirmed!</h1>
 	`;
 
-	const meetingLabel = data.meetingType === 'teams' ? 'Join Microsoft Teams Meeting' : 'Join Google Meet';
+	const joinLabel = meetingJoinLabel(data.meetingType || 'zoom');
 
 	const meetingDetails = generateMeetingDetailsCard({
 		eventName: data.eventName,
@@ -49,7 +50,7 @@ export function generateBookingEmail(data: BookingEmailData): string {
 		: '';
 
 	const actionButton = data.meetingUrl
-		? generateActionButton(data.meetingUrl, meetingLabel, brandColor)
+		? generateActionButton(data.meetingUrl, joinLabel, brandColor)
 		: '';
 
 	const managementLinks = generateManagementLinks(rescheduleUrl, cancelUrl, brandColor);

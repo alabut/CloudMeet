@@ -8,6 +8,7 @@
 
 import { json, error, type RequestEvent } from '@sveltejs/kit';
 import { sendReminderEmail, getEmailTemplates, type EmailTemplateType } from '$lib/server/email';
+import { inferMeetingTypeFromUrl } from '$lib/meeting';
 
 export const GET = async ({ url, platform }: RequestEvent) => {
 	const env = platform?.env;
@@ -123,6 +124,7 @@ export const GET = async ({ url, platform }: RequestEvent) => {
 							startTime: new Date(email.start_time),
 							endTime: new Date(email.end_time),
 							meetingUrl: email.meeting_url,
+							meetingType: inferMeetingTypeFromUrl(email.meeting_url),
 							bookingId: email.booking_id,
 							hostName: email.host_name,
 							hostEmail: email.host_email,

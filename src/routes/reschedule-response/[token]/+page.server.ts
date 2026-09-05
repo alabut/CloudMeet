@@ -8,6 +8,8 @@ import type { PageServerLoad, Actions } from './$types';
 import { createCalendarEvent, cancelCalendarEvent, getValidAccessToken } from '$lib/server/google-calendar';
 import { sendAdminRescheduleNotification, sendAdminCancellationNotification } from '$lib/server/email';
 import { buildCalendarEventDescription } from '$lib/server/calendar-event-description';
+import { getConfiguredZoomMeetingUrl } from '$lib/server/zoom';
+import { meetingJoinLabel } from '$lib/meeting';
 
 export const load: PageServerLoad = async ({ params, url, platform }) => {
 	const db = platform?.env?.DB;
@@ -145,8 +147,9 @@ export const actions: Actions = {
 				}
 			}
 
-			// Create new Google Calendar event
-			let newMeetingUrl: string | null = null;
+			// Create new Google Calendar event with recurring Zoom link
+			const zoomUrl = getConfiguredZoomMeetingUrl(env);
+			let newMeetingUrl: string | null = zoomUrl;
 			let newGoogleEventId: string | null = null;
 
 			try {
@@ -165,8 +168,11 @@ export const actions: Actions = {
 						attendeeEmail: proposal.attendee_email,
 						attendeeNotes: proposal.attendee_notes,
 						bookingId: proposal.booking_id,
-						appUrl: env.APP_URL
+						appUrl: env.APP_URL,
+						meetingUrl: zoomUrl,
+						meetingJoinLabel: meetingJoinLabel('zoom')
 					}),
+					location: zoomUrl,
 					start: {
 						dateTime: new Date(proposal.proposed_start_time).toISOString(),
 						timeZone: 'UTC'
@@ -177,17 +183,10 @@ export const actions: Actions = {
 					},
 					attendees: [
 						{ email: proposal.attendee_email }
-					],
-					conferenceData: {
-						createRequest: {
-							requestId: crypto.randomUUID(),
-							conferenceSolutionKey: { type: 'hangoutsMeet' }
-						}
-					}
+					]
 				});
 
 				newGoogleEventId = calendarEvent.id;
-				newMeetingUrl = calendarEvent.hangoutLink || null;
 			} catch (err) {
 				console.error('Failed to create new calendar event:', err);
 			}
@@ -237,6 +236,7 @@ export const actions: Actions = {
 							oldStartTime: new Date(proposal.original_start_time),
 							oldEndTime: new Date(proposal.original_end_time),
 							meetingUrl: newMeetingUrl,
+							meetingType: 'zoom',
 							bookingId: proposal.booking_id,
 							hostName: proposal.host_name,
 							hostEmail: proposal.host_email,
@@ -258,7 +258,7 @@ export const actions: Actions = {
 
 			throw redirect(303, `/reschedule-response/${token}?success=accepted`);
 		} catch (err: any) {
-			if (err?.status === 303) throw err;
+			if (err?.status === 303 || err?.status === 500) throw err;
 			console.error('Accept proposal error:', err);
 			return fail(500, { error: 'Failed to accept proposal' });
 		}

@@ -5,6 +5,7 @@
 import type { BookingEmailData } from '../types';
 import { createEmailFormatters } from '../formatters';
 import { generateBaseEmail, generateActionButton, generateManagementLinks } from './base';
+import { meetingJoinLabel } from '$lib/meeting';
 
 type ReminderType = 'reminder_24h' | 'reminder_1h' | 'reminder_30m';
 
@@ -43,9 +44,9 @@ export function generateReminderEmail(data: BookingEmailData, reminderType: Remi
 		</p>
 	` : '';
 
-	const meetingLabel = data.meetingType === 'teams' ? 'Join Microsoft Teams Meeting' : 'Join Google Meet';
+	const joinLabel = meetingJoinLabel(data.meetingType || 'zoom');
 	const actionButton = data.meetingUrl
-		? generateActionButton(data.meetingUrl, meetingLabel, brandColor)
+		? generateActionButton(data.meetingUrl, joinLabel, brandColor)
 		: '';
 
 	const managementLinks = generateManagementLinks(rescheduleUrl, cancelUrl, brandColor);

@@ -1,10 +1,13 @@
 <script lang="ts">
+	import type { MeetingType } from '$lib/meeting';
+	import { meetingJoinLabel } from '$lib/meeting';
+
 	interface Props {
 		eventName: string;
 		selectedDate: string;
 		selectedSlot: { start: string; end: string };
 		meetingUrl: string | null;
-		meetingType?: 'google_meet' | 'teams';
+		meetingType?: MeetingType;
 		bookingId?: string | null;
 		brandColor: string;
 		formatTimeRange: (start: string, end: string) => string;
@@ -16,14 +19,14 @@
 		selectedDate,
 		selectedSlot,
 		meetingUrl,
-		meetingType = 'google_meet',
+		meetingType = 'zoom',
 		bookingId = null,
 		brandColor,
 		formatTimeRange,
 		formatSelectedDate
 	}: Props = $props();
 
-	const meetingLabel = meetingType === 'teams' ? 'Join Microsoft Teams Meeting' : 'Join Google Meet';
+	const joinLabel = meetingJoinLabel(meetingType);
 </script>
 
 <!-- ===== USER STYLE ANCHOR: confirmation-view ===== -->
@@ -54,7 +57,7 @@
 						<svg class="w-5 h-5 text-text-secondary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
 						</svg>
-						<a href={meetingUrl} target="_blank" class="break-all pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors" style="color: {brandColor}">{meetingLabel}</a>
+						<a href={meetingUrl} target="_blank" class="break-all pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors" style="color: {brandColor}">{joinLabel}</a>
 					</div>
 				{/if}
 			</div>

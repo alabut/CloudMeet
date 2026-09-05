@@ -2,6 +2,10 @@
  * Email service types
  */
 
+import type { MeetingType } from '$lib/meeting';
+
+export type { MeetingType };
+
 export interface BookingEmailData {
 	attendeeName: string;
 	attendeeEmail: string;
@@ -11,7 +15,7 @@ export interface BookingEmailData {
 	startTime: Date;
 	endTime: Date;
 	meetingUrl: string | null;
-	meetingType?: 'google_meet' | 'teams';
+	meetingType?: MeetingType;
 	bookingId: string | number;
 	hostName: string;
 	hostEmail: string;

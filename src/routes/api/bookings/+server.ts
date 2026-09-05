@@ -11,6 +11,8 @@ import { sendBookingEmail, sendAdminNotificationEmail, getEmailTemplates, isEmai
 import { isValidEmail, validateLength, validateFields, MAX_LENGTHS } from '$lib/server/validation';
 import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
 import { buildCalendarEventDescription } from '$lib/server/calendar-event-description';
+import { getConfiguredZoomMeetingUrl } from '$lib/server/zoom';
+import { meetingJoinLabel, meetingTypeForInviteCalendar } from '$lib/meeting';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const env = platform?.env;
@@ -136,22 +138,29 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		let googleEventId: string | null = null;
 		let outlookEventId: string | null = null;
 		let meetingUrl: string | null = null;
+		const meetingType = meetingTypeForInviteCalendar(inviteCalendar);
 
 		// Generate the booking id up front so the reschedule/cancel links can be
 		// included in the calendar invite description (the booking row itself
 		// isn't inserted until after the calendar event is created below).
 		const bookingId = crypto.randomUUID();
-		const calendarDescription = buildCalendarEventDescription({
-			eventDescription: eventType.description,
-			attendeeName,
-			attendeeEmail,
-			attendeeNotes: notes,
-			bookingId,
-			appUrl: env.APP_URL
-		});
 
 		if (inviteCalendar === 'google') {
-			// Create Google Calendar event with Google Meet
+			// Google Calendar invite + recurring Zoom link (no Google Meet conference)
+			const zoomUrl = getConfiguredZoomMeetingUrl(env);
+			meetingUrl = zoomUrl;
+
+			const calendarDescription = buildCalendarEventDescription({
+				eventDescription: eventType.description,
+				attendeeName,
+				attendeeEmail,
+				attendeeNotes: notes,
+				bookingId,
+				appUrl: env.APP_URL,
+				meetingUrl: zoomUrl,
+				meetingJoinLabel: meetingJoinLabel('zoom')
+			});
+
 			try {
 				const accessToken = await getValidAccessToken(
 					db,
@@ -163,6 +172,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				const calendarEvent = await createCalendarEvent(accessToken, {
 					summary: `${eventType.name} with ${attendeeName}`,
 					description: calendarDescription,
+					location: zoomUrl,
 					start: {
 						dateTime: startDateTime.toISOString(),
 						timeZone: 'UTC'
@@ -173,22 +183,23 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 					},
 					attendees: [
 						{ email: attendeeEmail }
-					],
-					conferenceData: {
-						createRequest: {
-							requestId: crypto.randomUUID(),
-							conferenceSolutionKey: { type: 'hangoutsMeet' }
-						}
-					}
+					]
 				});
 
 				googleEventId = calendarEvent.id;
-				meetingUrl = calendarEvent.hangoutLink || null;
 			} catch (err) {
 				console.error('Error creating Google Calendar event:', err);
 				// Continue without Google Calendar event if there's an error
 			}
 		} else if (inviteCalendar === 'outlook' && env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET) {
+			const calendarDescription = buildCalendarEventDescription({
+				eventDescription: eventType.description,
+				attendeeName,
+				attendeeEmail,
+				attendeeNotes: notes,
+				bookingId,
+				appUrl: env.APP_URL
+			});
 			// Create Outlook Calendar event with Teams meeting
 			try {
 				const outlookToken = await getValidOutlookAccessToken(
@@ -272,7 +283,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 					startTime: startDateTime,
 					endTime: endDateTime,
 					meetingUrl,
-					meetingType: (inviteCalendar === 'outlook' ? 'teams' : 'google_meet') as 'google_meet' | 'teams',
+					meetingType,
 					bookingId,
 					hostName: user.name,
 					hostEmail: user.email,
@@ -338,7 +349,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			success: true,
 			bookingId,
 			meetingUrl,
-			meetingType: inviteCalendar === 'outlook' ? 'teams' : 'google_meet'
+			meetingType
 		});
 	} catch (err: any) {
 		console.error('Booking creation error:', err);

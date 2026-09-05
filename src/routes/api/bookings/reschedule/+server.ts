@@ -9,6 +9,8 @@ import { createCalendarEvent, cancelCalendarEvent, getValidAccessToken } from '$
 import { sendRescheduleEmail, sendAdminRescheduleNotification, getEmailTemplates, isEmailEnabled } from '$lib/server/email';
 import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
 import { buildCalendarEventDescription } from '$lib/server/calendar-event-description';
+import { getConfiguredZoomMeetingUrl } from '$lib/server/zoom';
+import { meetingJoinLabel } from '$lib/meeting';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const env = platform?.env;
@@ -102,9 +104,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			throw error(409, 'This time slot is no longer available');
 		}
 
-		// Cancel old Google Calendar event and create new one
+		// Cancel old Google Calendar event and create new one with recurring Zoom link
 		let newCalendarEventId: string | null = null;
-		let newMeetingUrl: string | null = null;
+		const zoomUrl = getConfiguredZoomMeetingUrl(env);
+		let newMeetingUrl: string | null = zoomUrl;
 
 		try {
 			const accessToken = await getValidAccessToken(
@@ -123,7 +126,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				}
 			}
 
-			// Create new calendar event
+			// Create new calendar event (Zoom location, no Google Meet conference)
 			const calendarEvent = await createCalendarEvent(accessToken, {
 				summary: `${originalBooking.event_name} with ${originalBooking.attendee_name}`,
 				description: buildCalendarEventDescription({
@@ -132,8 +135,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 					attendeeEmail: originalBooking.attendee_email,
 					attendeeNotes: originalBooking.attendee_notes,
 					bookingId: originalBooking.id,
-					appUrl: env.APP_URL
+					appUrl: env.APP_URL,
+					meetingUrl: zoomUrl,
+					meetingJoinLabel: meetingJoinLabel('zoom')
 				}),
+				location: zoomUrl,
 				start: {
 					dateTime: newStartDateTime.toISOString(),
 					timeZone: 'UTC'
@@ -144,17 +150,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				},
 				attendees: [
 					{ email: originalBooking.attendee_email }
-				],
-				conferenceData: {
-					createRequest: {
-						requestId: crypto.randomUUID(),
-						conferenceSolutionKey: { type: 'hangoutsMeet' }
-					}
-				}
+				]
 			});
 
 			newCalendarEventId = calendarEvent.id;
-			newMeetingUrl = calendarEvent.hangoutLink || calendarEvent.htmlLink || null;
 		} catch (err) {
 			console.error('Error with Google Calendar:', err);
 			// Continue without calendar event if there's an error
@@ -224,6 +223,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 							oldStartTime: oldStartDateTime,
 							oldEndTime: oldEndDateTime,
 							meetingUrl: newMeetingUrl,
+							meetingType: 'zoom',
 							bookingId: originalBooking.id,
 							hostName: originalBooking.host_name,
 							hostEmail: originalBooking.host_email,
@@ -256,6 +256,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 							oldStartTime: oldStartDateTime,
 							oldEndTime: oldEndDateTime,
 							meetingUrl: newMeetingUrl,
+							meetingType: 'zoom',
 							bookingId: originalBooking.id,
 							hostName: originalBooking.host_name,
 							hostEmail: originalBooking.host_email,
@@ -301,7 +302,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		return json({
 			success: true,
 			bookingId,
-			meetingUrl: newMeetingUrl
+			meetingUrl: newMeetingUrl,
+			meetingType: 'zoom'
 		});
 	} catch (err: any) {
 		console.error('Reschedule error:', err);

@@ -7,6 +7,8 @@
 	import { formatDateLocal, formatSelectedDate, createFormatters } from '$lib/utils/dateFormatters';
 	import { BookingCalendar, TimeSlotList, BookingForm, BookingSuccess, EventSidebar } from '$lib/components/booking';
 	import BookingIdentity from '$lib/components/BookingIdentity.svelte';
+	import type { MeetingType } from '$lib/meeting';
+	import { meetingShortLabel, meetingTypeForInviteCalendar } from '$lib/meeting';
 
 	let { data }: { data: PageData } = $props();
 
@@ -56,7 +58,7 @@
 	let bookingStatus = $state<'idle' | 'submitting' | 'success' | 'error'>('idle');
 	let bookingError = $state('');
 	let meetingUrl = $state<string | null>(null);
-	let meetingType = $state<'google_meet' | 'teams'>('google_meet');
+	let meetingType = $state<MeetingType>('zoom');
 	let confirmedBookingId = $state<string | null>(null);
 
 	// Track which dates have available slots
@@ -267,9 +269,9 @@
 				throw new Error(errData.message || 'Failed to create booking');
 			}
 
-			const result = await response.json() as { bookingId?: string; meetingUrl?: string; meetingType?: 'google_meet' | 'teams' };
+			const result = await response.json() as { bookingId?: string; meetingUrl?: string; meetingType?: MeetingType };
 			meetingUrl = result.meetingUrl || null;
-			meetingType = result.meetingType || 'google_meet';
+			meetingType = result.meetingType || 'zoom';
 			confirmedBookingId = result.bookingId || null;
 			bookingStatus = 'success';
 		} catch (error: any) {
@@ -366,7 +368,7 @@
 							<svg class="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
 							</svg>
-							<span>{data.eventType?.invite_calendar === 'outlook' ? 'Microsoft Teams' : 'Google Meet'}</span>
+							<span>{meetingShortLabel(meetingTypeForInviteCalendar(data.eventType?.invite_calendar))}</span>
 						</li>
 						<li class="flex items-center gap-3">
 							<svg class="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">

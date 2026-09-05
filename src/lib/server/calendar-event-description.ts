@@ -5,6 +5,8 @@ export interface CalendarEventDescriptionParams {
 	attendeeNotes?: string | null;
 	bookingId: string;
 	appUrl?: string;
+	meetingUrl?: string | null;
+	meetingJoinLabel?: string;
 }
 
 /**
@@ -12,12 +14,24 @@ export interface CalendarEventDescriptionParams {
  * Includes attendee details and reschedule/cancel links when APP_URL is configured.
  */
 export function buildCalendarEventDescription(params: CalendarEventDescriptionParams): string {
-	const { eventDescription, attendeeName, attendeeEmail, attendeeNotes, bookingId, appUrl } = params;
+	const {
+		eventDescription,
+		attendeeName,
+		attendeeEmail,
+		attendeeNotes,
+		bookingId,
+		appUrl,
+		meetingUrl,
+		meetingJoinLabel
+	} = params;
 
 	const baseUrl = (appUrl || '').replace(/\/$/, '');
+	const meetingLines = meetingUrl
+		? `\n\n${meetingJoinLabel || 'Join Meeting'}: ${meetingUrl}`
+		: '';
 	const rescheduleCancelLines = baseUrl
 		? `\n\nNeed to make a change?\nReschedule: ${baseUrl}/reschedule/${bookingId}\nCancel: ${baseUrl}/cancel/${bookingId}`
 		: '';
 
-	return `${eventDescription || ''}\n\nAttendee: ${attendeeName} (${attendeeEmail})${attendeeNotes ? `\n\nNotes from attendee:\n${attendeeNotes}` : ''}${rescheduleCancelLines}`;
+	return `${eventDescription || ''}${meetingLines}\n\nAttendee: ${attendeeName} (${attendeeEmail})${attendeeNotes ? `\n\nNotes from attendee:\n${attendeeNotes}` : ''}${rescheduleCancelLines}`;
 }

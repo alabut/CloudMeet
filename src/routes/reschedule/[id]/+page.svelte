@@ -4,6 +4,7 @@
 	import { detectTimezone, getCurrentTime } from '$lib/constants/timezones';
 	import { formatDateLocal, formatSelectedDate } from '$lib/utils/dateFormatters';
 	import { BookingCalendar } from '$lib/components/booking';
+	import { meetingJoinLabel, meetingShortLabel, meetingTypeForInviteCalendar } from '$lib/meeting';
 
 	let { data }: { data: PageData } = $props();
 
@@ -192,7 +193,7 @@
 								<svg class="w-5 h-5 text-text-secondary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
 								</svg>
-								<a href={newMeetingUrl} target="_blank" class="break-all pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors text-accent">{data.booking.inviteCalendar === 'outlook' ? 'Join Microsoft Teams Meeting' : 'Join Google Meet'}</a>
+								<a href={newMeetingUrl} target="_blank" class="break-all pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors text-accent">{meetingJoinLabel(meetingTypeForInviteCalendar(data.booking.inviteCalendar))}</a>
 							</div>
 						{/if}
 					</div>
@@ -243,7 +244,7 @@
 							<svg class="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
 							</svg>
-							<span>{data.booking.inviteCalendar === 'outlook' ? 'Microsoft Teams' : 'Google Meet'}</span>
+							<span>{meetingShortLabel(meetingTypeForInviteCalendar(data.booking.inviteCalendar))}</span>
 						</div>
 					</div>
 

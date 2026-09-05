@@ -61,7 +61,7 @@
 
 	function getInviteLabel(val: string) {
 		if (val === 'outlook') return 'Outlook (Microsoft Teams)';
-		return 'Google Calendar (Google Meet)';
+		return 'Google Calendar (Zoom)';
 	}
 
 	async function handleCoverUpload(e: Event) {
@@ -336,7 +336,7 @@
 										class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 									>
 										{#if hasGoogle}
-											<option value="google">Google Calendar (with Google Meet)</option>
+											<option value="google">Google Calendar (with Zoom)</option>
 										{/if}
 										{#if hasOutlook}
 											<option value="outlook">Outlook Calendar (with Microsoft Teams)</option>

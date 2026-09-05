@@ -186,7 +186,7 @@
 					</svg>
 					<div class="text-sm text-green-800">
 						<p class="font-medium mb-1">Calendar Notifications</p>
-						<p>Your attendees will always receive calendar invitations with meeting details and video call links (Google Meet or Microsoft Teams). The emails below are <strong>additional</strong> custom notifications you can send.</p>
+						<p>Your attendees will always receive calendar invitations with meeting details and video call links (Zoom or Microsoft Teams). The emails below are <strong>additional</strong> custom notifications you can send.</p>
 					</div>
 				</div>
 			</div>
