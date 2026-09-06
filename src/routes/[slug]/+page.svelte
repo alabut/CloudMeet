@@ -333,7 +333,7 @@
 
 <!-- ===== USER STYLE ANCHOR: booking-page-layout-wrapper ===== -->
 <div
-	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center {bookingStatus === 'success' || isSuccessPreview ? '' : 'md:px-gutter md:pb-[clamp(4rem,10vh,8rem)] md:pt-[clamp(4rem,10vh,8rem)]'}"
+	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center {bookingStatus === 'success' || isSuccessPreview ? '' : 'md:px-gutter'}"
 	style="--brand-color: {brandColor}; --brand-light: {brandDark}; --brand-lighter: {brandLighter}; --brand-dark: {brandDark}; --brand-rgb: {colors.rgb.r}, {colors.rgb.g}, {colors.rgb.b};"
 >
 	{#if bookingStatus === 'success' || isSuccessPreview}
@@ -352,10 +352,88 @@
 			/>
 		</div>
 	{:else}
-		<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
+		<!-- Desktop: vertically center identity + booking card when content fits viewport -->
+		<div class="hidden w-full max-w-[920px] md:flex md:min-h-screen md:flex-col md:justify-center">
+			<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
+
+			<div class="w-full">
+				<div class="flex min-h-[440px] w-full bg-bg border border-border rounded-large overflow-hidden">
+					<!-- Left Sidebar -->
+					<EventSidebar
+						user={data.user}
+						eventType={data.eventType}
+						{selectedDate}
+						{selectedSlot}
+						{brandColor}
+						{formatTime}
+						displayName={desktopSchedulerHeading}
+						{displayDescription}
+						timezoneLabel={getTimezoneWithTime(selectedTimezone, use12Hour)}
+						{selectedTimezone}
+						{showTimezoneDropdown}
+						showSelectionSummary={showForm}
+						onTimezoneToggle={() => showTimezoneDropdown = !showTimezoneDropdown}
+						onTimezoneSelect={(tz) => selectedTimezone = tz}
+						onTimezoneClose={() => showTimezoneDropdown = false}
+					/>
+
+					<!-- Main Content -->
+					<div class="flex-1">
+						{#if showForm}
+							<div class="p-6">
+								<BookingForm
+									bind:bookingForm
+									{bookingStatus}
+									{bookingError}
+									{brandColor}
+									{brandDark}
+									onSubmit={handleSubmit}
+								/>
+							</div>
+						{:else}
+							<div class="flex min-h-[440px] items-stretch">
+								<div class={selectedDate ? 'w-[408px] shrink-0 p-6' : 'flex min-w-0 flex-1 justify-center p-6'}>
+									<div class="w-[360px] max-w-full">
+										{#if data.slug !== '30min'}
+											<h2 class="font-display text-xl font-medium text-text mb-6">Select a Date & Time</h2>
+										{/if}
+
+										<BookingCalendar
+											{currentMonth}
+											{selectedDate}
+											{availableDates}
+											{brandColor}
+											{brandLighter}
+											{brandDark}
+											onDateSelect={handleDateSelect}
+											onPrevMonth={prevMonth}
+											onNextMonth={nextMonth}
+										/>
+									</div>
+								</div>
+
+								{#if selectedDate}
+									<TimeSlotList
+										{availableSlots}
+										{selectedSlot}
+										{loading}
+										{brandColor}
+										{formatTime}
+										onSelectSlot={selectSlot}
+										onConfirm={confirmSlot}
+									/>
+								{/if}
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		</div>
 
 		<!-- MOBILE LAYOUT (< 768px) - Full white page -->
-		<div class="md:hidden min-h-screen w-full bg-bg">
+		<div class="md:hidden w-full">
+			<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
+			<div class="min-h-screen w-full bg-bg">
 			<!-- Cover Image with black line below -->
 			{#if data.eventType?.cover_image}
 				<div class="px-6 pt-6 flex justify-center">
@@ -580,79 +658,6 @@
 				</div>
 			{/if}
 
-		</div>
-
-		<!-- DESKTOP LAYOUT (>= 768px) -->
-		<div class="hidden w-full max-w-[920px] md:block">
-		<div class="flex min-h-[440px] w-full bg-bg border border-border rounded-large overflow-hidden">
-			<!-- Left Sidebar -->
-			<EventSidebar
-				user={data.user}
-				eventType={data.eventType}
-				{selectedDate}
-				{selectedSlot}
-				{brandColor}
-				{formatTime}
-				displayName={desktopSchedulerHeading}
-				{displayDescription}
-				timezoneLabel={getTimezoneWithTime(selectedTimezone, use12Hour)}
-				{selectedTimezone}
-				{showTimezoneDropdown}
-				showSelectionSummary={showForm}
-				onTimezoneToggle={() => showTimezoneDropdown = !showTimezoneDropdown}
-				onTimezoneSelect={(tz) => selectedTimezone = tz}
-				onTimezoneClose={() => showTimezoneDropdown = false}
-			/>
-
-			<!-- Main Content -->
-			<div class="flex-1">
-				{#if showForm}
-					<div class="p-6">
-					<BookingForm
-						bind:bookingForm
-						{bookingStatus}
-						{bookingError}
-						{brandColor}
-						{brandDark}
-						onSubmit={handleSubmit}
-					/>
-					</div>
-				{:else}
-					<div class="flex min-h-[440px] items-stretch">
-						<div class={selectedDate ? 'w-[408px] shrink-0 p-6' : 'flex min-w-0 flex-1 justify-center p-6'}>
-						<div class="w-[360px] max-w-full">
-							{#if data.slug !== '30min'}
-								<h2 class="font-display text-xl font-medium text-text mb-6">Select a Date & Time</h2>
-							{/if}
-
-							<BookingCalendar
-								{currentMonth}
-								{selectedDate}
-								{availableDates}
-								{brandColor}
-								{brandLighter}
-								{brandDark}
-								onDateSelect={handleDateSelect}
-								onPrevMonth={prevMonth}
-								onNextMonth={nextMonth}
-							/>
-						</div>
-						</div>
-
-						{#if selectedDate}
-							<TimeSlotList
-								{availableSlots}
-								{selectedSlot}
-								{loading}
-								{brandColor}
-								{formatTime}
-								onSelectSlot={selectSlot}
-								onConfirm={confirmSlot}
-							/>
-						{/if}
-					</div>
-				{/if}
-			</div>
 		</div>
 		</div>
 
