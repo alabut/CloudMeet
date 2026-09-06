@@ -66,6 +66,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
         run: |
           if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
             echo "APP_URL/CRON_SECRET not set in GitHub secrets; skipping worker secret update"
@@ -73,3 +74,6 @@ jobs:
           fi
           printf '%s' "$APP_URL" | npx wrangler secret put APP_URL
           printf '%s' "$CRON_SECRET" | npx wrangler secret put CRON_SECRET
+          if [ -n "$HEALTHCHECK_URL" ]; then
+            printf '%s' "$HEALTHCHECK_URL" | npx wrangler secret put HEALTHCHECK_URL
+          fi

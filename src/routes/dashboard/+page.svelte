@@ -152,6 +152,10 @@
 					Reconnect Google
 				</a>
 			</div>
+		{:else if data.googleCalendarOk}
+			<p class="mb-6 text-sm text-green-800">
+				Google Calendar is connected. New bookings can create invites.
+			</p>
 		{/if}
 
 		<!-- Profile Section -->

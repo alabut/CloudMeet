@@ -8,3 +8,4 @@ crons = ["*/5 * * * *"]
 # These will be set via wrangler secret:
 # wrangler secret put APP_URL
 # wrangler secret put CRON_SECRET
+# wrangler secret put HEALTHCHECK_URL   (optional; healthchecks.io ping URL)
