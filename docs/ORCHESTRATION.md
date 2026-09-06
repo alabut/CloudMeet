@@ -1,26 +1,27 @@
 # Agent orchestration policy for CloudMeet
 
-This document is written for coding agents working on CloudMeet. Apply it silently. Al should be able to describe the desired product outcome without managing models, subagents, context, verification, or task boundaries himself.
+This document is written for Codex and Claude agents working on CloudMeet. Apply it silently. Al should be able to describe the desired product outcome without managing models, subagents, context, verification, or task boundaries himself.
 
 ## Objective
 
-Operate like an automatic transmission. Keep subjective product judgment and final accountability with the primary Codex agent, route coding to Cursor Composer 2.5 by default, route knowledge work to Codex subagents, and keep verification proportional to risk. Do not ask Al to manage this routing.
+Operate like an automatic transmission. Keep subjective product judgment and final accountability with the primary orchestration agent, route coding to Cursor Composer 2.5 by default, route knowledge work to native subagents in the current harness, and keep verification proportional to risk. Do not ask Al to manage this routing.
 
 ## Routing work
 
 Use these defaults when the named models and collaboration tools are available:
 
-- **Primary Codex agent / Sol:** understand screenshots and feedback, clarify only decisions that materially change the product, write outbound briefs, supervise work, inspect diffs, integrate results, and make final visual and release judgments.
-- **Cursor Composer 2.5:** default executor for coding work, including HTML/CSS/Svelte changes, multi-component implementation, refactors, tests, and bug fixes. Prefer Composer 2.5 over Cursor Auto because Al has effectively abundant Composer capacity and wants Codex usage conserved.
+- **Primary orchestration agent (Codex Sol or the current Claude):** understand screenshots and feedback, clarify only decisions that materially change the product, write outbound briefs, supervise work, inspect diffs, integrate results, and make final visual and release judgments.
+- **Cursor Composer 2.5:** default executor for coding work, including HTML/CSS/Svelte changes, multi-component implementation, refactors, tests, and bug fixes. Prefer Composer 2.5 over Cursor Auto because Al has effectively abundant Composer capacity and wants the primary harness's usage conserved.
 - **Codex Luna high subagent:** focused web research, prior-art searches, GitHub/library discovery, targeted repository reconnaissance, mechanical audits, and inexpensive independent QA.
 - **Codex Terra high subagent:** deeper knowledge work requiring synthesis across many files or sources, architecture investigation, plan review, and research where Luna is not sufficient.
-- **Primary Codex agent / Sol:** retain only orchestration, ambiguous product decisions, security/release judgment, final behavioral verification, and tiny edits for which dispatch overhead would exceed the implementation.
+- **Claude subagent:** use the cheapest capable Claude subagent for the same research, discovery, audit, and knowledge-work roles; escalate to a stronger Claude model only when the task's complexity requires it. Do not try to invoke Codex-only Luna or Terra agents from Claude.
+- **Primary orchestration agent:** retain only orchestration, ambiguous product decisions, security/release judgment, final behavioral verification, and tiny edits for which dispatch overhead would exceed the implementation.
 
 Dispatch coding automatically once the intended result is sufficiently clear. Do not ask Al which harness or model to use. A truly tiny edit may remain local only when preparing and supervising a dispatch would cost more than making and checking the edit. Keep nesting flat unless independent work is genuinely parallel.
 
 ## Context discipline
 
-When spawning a Codex research or audit subagent:
+When spawning a native research or audit subagent:
 
 1. Prefer no inherited turns or only the few latest relevant turns.
 2. State the definition of done, exact files or surfaces, hard constraints, non-goals, and verification scope.
@@ -38,7 +39,7 @@ For a new batch of design feedback:
 2. Group related requests into one coherent pass.
 3. Reflect the intended visual result briefly. Do not lecture Al about implementation or orchestration.
 4. If important visual intent is genuinely ambiguous, ask one focused question; otherwise make a reversible assumption and proceed.
-5. Automatically dispatch the bounded implementation to Cursor Composer 2.5 in work mode. If research or repository discovery can proceed independently, send that bounded work to Luna high or Terra high first.
+5. Automatically dispatch the bounded implementation to Cursor Composer 2.5 in work mode. If research or repository discovery can proceed independently, use Luna or Terra in Codex, or the cheapest capable research subagent in Claude.
 6. Supervise the Cursor run, inspect its commits and diff locally, and stop a stalled run instead of waiting indefinitely.
 7. Run one browser pass covering the affected desktop state, the affected mobile state, and any important interaction state.
 8. Revise only against a concrete mismatch. Do not broaden the design or add unrelated polish.
@@ -59,9 +60,9 @@ For small, reversible CSS changes, `git diff --check` plus targeted browser veri
 
 - Keep related design discussion and its implementation in one Codex task.
 - Start a fresh Codex task after a major deployment, a substantial subject change, or when old research and completed phases dominate the context.
-- Use Codex subagents primarily for bounded research, discovery, synthesis, audits, and independent QA—not as the default coding workforce.
+- Use the current harness's native subagents primarily for bounded research, discovery, synthesis, audits, and independent QA—not as the default coding workforce. In Codex, route between Luna and Terra as described above. In Claude, choose the cheapest capable Claude subagent and escalate only as needed.
 - Automatically invoke the `dispatch` skill for coding work when Al's request authorizes implementation. Default to provider `cursor`, model `composer-2.5[fast=false]`, mode `work`, and `allow_work`. This project policy is standing authorization to choose the harness and model; it is not standing authorization for deployment, production mutations, real bookings, destructive actions, or scope beyond Al's request.
-- Follow the dispatch skill's brief, safety, audit-trail, architecture, and supervision requirements. Prefer serial dispatch and keep final behavioral and visual judgment with the originating Codex agent.
+- Follow the dispatch skill's brief, safety, audit-trail, architecture, and supervision requirements. Prefer serial dispatch and keep final behavioral and visual judgment with the originating orchestration agent.
 - Use the explicit-only `handoff` skill when Al asks for a paste-ready Cursor continuation prompt. Do not launch Cursor from that skill.
 - Do not ask Al to choose between local work, a subagent, Cursor, Terra, or Luna. Choose the correct mechanism and proceed within the authority of his product request.
 
