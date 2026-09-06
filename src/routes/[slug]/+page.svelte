@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/stores';
 	import type { PageData } from './$types';
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
 	import { createBrandColors } from '$lib/utils/colorUtils';
@@ -11,6 +12,31 @@
 	import { meetingShortLabel, meetingTypeForInviteCalendar } from '$lib/meeting';
 
 	let { data }: { data: PageData } = $props();
+
+	const PREVIEW_BOOKING_ID = 'preview-sample-booking';
+	const PREVIEW_MEETING_URL = 'https://zoom.us/j/12345678901';
+
+	function isLoopbackHost(hostname: string): boolean {
+		return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
+	}
+
+	const isSuccessPreview = $derived(
+		browser &&
+			isLoopbackHost(window.location.hostname) &&
+			$page.url.searchParams.get('preview') === 'success'
+	);
+
+	const previewSample = $derived.by(() => {
+		const start = new Date();
+		start.setDate(start.getDate() + 3);
+		start.setHours(14, 0, 0, 0);
+		const end = new Date(start);
+		end.setMinutes(end.getMinutes() + 30);
+		return {
+			date: formatDateLocal(start),
+			slot: { start: start.toISOString(), end: end.toISOString() }
+		};
+	});
 
 	// Sanitize event description to prevent XSS (only in browser, SSR uses escaped version)
 	let sanitizedDescription = $state('');
@@ -191,6 +217,7 @@
 	}
 
 	$effect(() => {
+		if (isSuccessPreview) return;
 		fetchMonthAvailability();
 	});
 
@@ -198,7 +225,7 @@
 	// scrolled deep into the form before submitting, and the view swap keeps the
 	// old scroll offset otherwise.
 	$effect(() => {
-		if (bookingStatus === 'success' && browser) {
+		if ((bookingStatus === 'success' || isSuccessPreview) && browser) {
 			window.scrollTo(0, 0);
 		}
 	});
@@ -306,22 +333,24 @@
 
 <!-- ===== USER STYLE ANCHOR: booking-page-layout-wrapper ===== -->
 <div
-	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center md:justify-start md:px-gutter md:py-10"
+	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center {bookingStatus === 'success' || isSuccessPreview ? '' : 'md:px-gutter md:pb-[clamp(4rem,10vh,8rem)] md:pt-[clamp(4rem,10vh,8rem)]'}"
 	style="--brand-color: {brandColor}; --brand-light: {brandDark}; --brand-lighter: {brandLighter}; --brand-dark: {brandDark}; --brand-rgb: {colors.rgb.r}, {colors.rgb.g}, {colors.rgb.b};"
 >
-	{#if bookingStatus === 'success'}
+	{#if bookingStatus === 'success' || isSuccessPreview}
 		<!-- Success Screen -->
-		<BookingSuccess
-			eventName={displayEventName}
-			{selectedDate}
-			{selectedSlot}
-			{meetingUrl}
-			{meetingType}
-			bookingId={confirmedBookingId}
-			{brandColor}
-			{formatTimeRange}
-			{formatSelectedDate}
-		/>
+		<div class="flex min-h-screen w-full items-start justify-center px-2 py-8 md:items-center md:px-gutter md:py-12">
+			<BookingSuccess
+				eventName={displayEventName}
+				selectedDate={isSuccessPreview ? previewSample.date : (selectedDate ?? '')}
+				selectedSlot={isSuccessPreview ? previewSample.slot : (selectedSlot ?? { start: '', end: '' })}
+				meetingUrl={isSuccessPreview ? PREVIEW_MEETING_URL : meetingUrl}
+				meetingType={isSuccessPreview ? 'zoom' : meetingType}
+				bookingId={isSuccessPreview ? PREVIEW_BOOKING_ID : confirmedBookingId}
+				{brandColor}
+				{formatTimeRange}
+				{formatSelectedDate}
+			/>
+		</div>
 	{:else}
 		<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
 
@@ -516,7 +545,7 @@
 								id="mobile-name"
 								bind:value={bookingForm.name}
 								required
-								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
+								class="w-full px-4 py-3 bg-[var(--field-bg)] border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
 							/>
 						</div>
 						<div>
@@ -526,7 +555,7 @@
 								id="mobile-email"
 								bind:value={bookingForm.email}
 								required
-								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
+								class="w-full px-4 py-3 bg-[var(--field-bg)] border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
 							/>
 						</div>
 						<div>
@@ -537,7 +566,7 @@
 								id="mobile-notes"
 								bind:value={bookingForm.notes}
 								rows="4"
-								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none resize-none"
+								class="w-full px-4 py-3 bg-[var(--field-bg)] border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none resize-none"
 							></textarea>
 						</div>
 						<button
@@ -569,6 +598,7 @@
 				timezoneLabel={getTimezoneWithTime(selectedTimezone, use12Hour)}
 				{selectedTimezone}
 				{showTimezoneDropdown}
+				showSelectionSummary={showForm}
 				onTimezoneToggle={() => showTimezoneDropdown = !showTimezoneDropdown}
 				onTimezoneSelect={(tz) => selectedTimezone = tz}
 				onTimezoneClose={() => showTimezoneDropdown = false}
@@ -576,12 +606,6 @@
 
 			<!-- Main Content -->
 			<div class="flex-1">
-				{#if bookingError}
-					<div class="m-6 mb-0 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg p-4 max-w-2xl">
-						{bookingError}
-					</div>
-				{/if}
-
 				{#if showForm}
 					<div class="p-6">
 					<BookingForm
@@ -617,7 +641,6 @@
 
 						{#if selectedDate}
 							<TimeSlotList
-								{selectedDate}
 								{availableSlots}
 								{selectedSlot}
 								{loading}

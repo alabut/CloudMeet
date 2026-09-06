@@ -29,6 +29,7 @@
 		onTimezoneToggle: () => void;
 		onTimezoneSelect: (timezone: string) => void;
 		onTimezoneClose: () => void;
+		showSelectionSummary?: boolean;
 	}
 
 	let {
@@ -45,7 +46,8 @@
 		showTimezoneDropdown,
 		onTimezoneToggle,
 		onTimezoneSelect,
-		onTimezoneClose
+		onTimezoneClose,
+		showSelectionSummary = false
 	}: Props = $props();
 
 	// Sanitize event description to prevent XSS (only in browser, SSR uses raw since admin-entered)
@@ -129,7 +131,7 @@
 			</div>
 		</div>
 
-		{#if selectedDate && selectedSlot}
+		{#if showSelectionSummary && selectedDate && selectedSlot}
 			<div class="mt-6 pt-6 border-t border-border">
 				<div class="flex items-center gap-3 text-sm">
 					<svg class="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
