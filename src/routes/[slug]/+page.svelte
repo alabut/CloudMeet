@@ -26,6 +26,15 @@
 			$page.url.searchParams.get('preview') === 'success'
 	);
 
+	// Loopback-only ?preview=details QA — desktop Enter Details state without calendar OAuth.
+	const isDetailsPreview = $derived(
+		browser &&
+			isLoopbackHost(window.location.hostname) &&
+			$page.url.searchParams.get('preview') === 'details'
+	);
+
+	const isLocalPreview = $derived(isSuccessPreview || isDetailsPreview);
+
 	const previewSample = $derived.by(() => {
 		const start = new Date();
 		start.setDate(start.getDate() + 3);
@@ -37,6 +46,19 @@
 			slot: { start: start.toISOString(), end: end.toISOString() }
 		};
 	});
+
+	/** Static slot list for loopback ?preview=details only — never used outside local QA. */
+	function getLocalPreviewSlots(sampleSlot: { start: string; end: string }) {
+		const day = new Date(sampleSlot.start);
+		const durationMs = new Date(sampleSlot.end).getTime() - day.getTime();
+		return [9, 10, 11, 13, 14, 15, 16].map((hour) => {
+			if (hour === 14) return sampleSlot;
+			const start = new Date(day);
+			start.setHours(hour, 0, 0, 0);
+			const end = new Date(start.getTime() + durationMs);
+			return { start: start.toISOString(), end: end.toISOString() };
+		});
+	}
 
 	// Sanitize event description to prevent XSS (only in browser, SSR uses escaped version)
 	let sanitizedDescription = $state('');
@@ -86,6 +108,7 @@
 	let meetingUrl = $state<string | null>(null);
 	let meetingType = $state<MeetingType>('zoom');
 	let confirmedBookingId = $state<string | null>(null);
+	let localDetailsPreviewReady = false;
 
 	// Track which dates have available slots
 	let availableDates = $state<Set<string>>(new Set());
@@ -189,6 +212,8 @@
 	}
 
 	async function fetchMonthAvailability() {
+		if (isDetailsPreview) return;
+
 		loadingAvailability = true;
 
 		try {
@@ -217,8 +242,25 @@
 	}
 
 	$effect(() => {
-		if (isSuccessPreview) return;
+		if (isLocalPreview) return;
 		fetchMonthAvailability();
+	});
+
+	$effect(() => {
+		if (!isDetailsPreview) {
+			localDetailsPreviewReady = false;
+			return;
+		}
+		if (localDetailsPreviewReady) return;
+		localDetailsPreviewReady = true;
+
+		selectedDate = previewSample.date;
+		selectedSlot = previewSample.slot;
+		showForm = true;
+		availableSlots = getLocalPreviewSlots(previewSample.slot);
+		availableDates = new Set([previewSample.date]);
+		const sampleDay = new Date(`${previewSample.date}T12:00:00`);
+		currentMonth = new Date(sampleDay.getFullYear(), sampleDay.getMonth(), 1);
 	});
 
 	// Scroll back to the top when the success screen appears -- the user may have
@@ -231,6 +273,15 @@
 	});
 
 	async function handleDateSelect(dateStr: string, advanceMobile = true) {
+		if (isDetailsPreview) {
+			selectedDate = dateStr;
+			selectedSlot = dateStr === previewSample.date ? previewSample.slot : null;
+			showForm = false;
+			availableSlots = dateStr === previewSample.date ? getLocalPreviewSlots(previewSample.slot) : [];
+			if (advanceMobile) mobileStep = 'times';
+			return;
+		}
+
 		selectedDate = dateStr;
 		selectedSlot = null;
 		showForm = false;
@@ -259,6 +310,10 @@
 		mobileStep = 'form';
 	}
 
+	function changeTime() {
+		showForm = false;
+	}
+
 	function goBackMobile() {
 		if (mobileStep === 'form') {
 			mobileStep = 'times';
@@ -273,6 +328,8 @@
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
+		if (isDetailsPreview) return;
+
 		bookingStatus = 'submitting';
 		bookingError = '';
 
@@ -357,7 +414,7 @@
 			<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
 
 			<div class="w-full">
-				<div class="flex min-h-[440px] w-full bg-bg border border-border rounded-large overflow-hidden">
+				<div class="flex min-h-[544px] w-full bg-bg border border-border rounded-large overflow-hidden">
 					<!-- Left Sidebar -->
 					<EventSidebar
 						user={data.user}
@@ -372,15 +429,16 @@
 						{selectedTimezone}
 						{showTimezoneDropdown}
 						showSelectionSummary={showForm}
+						onChangeTime={changeTime}
 						onTimezoneToggle={() => showTimezoneDropdown = !showTimezoneDropdown}
 						onTimezoneSelect={(tz) => selectedTimezone = tz}
 						onTimezoneClose={() => showTimezoneDropdown = false}
 					/>
 
 					<!-- Main Content -->
-					<div class="flex-1">
+					<div class="flex min-h-[544px] flex-1 flex-col">
 						{#if showForm}
-							<div class="p-6">
+							<div class="flex flex-1 flex-col p-6">
 								<BookingForm
 									bind:bookingForm
 									{bookingStatus}
@@ -391,7 +449,7 @@
 								/>
 							</div>
 						{:else}
-							<div class="flex min-h-[440px] items-stretch">
+							<div class="flex min-h-[544px] flex-1 items-stretch">
 								<div class={selectedDate ? 'w-[408px] shrink-0 p-6' : 'flex min-w-0 flex-1 justify-center p-6'}>
 									<div class="w-[360px] max-w-full">
 										{#if data.slug !== '30min'}
@@ -579,7 +637,7 @@
 					{:else}
 						<div class="grid grid-cols-2 gap-3">
 							{#each availableSlots as slot}
-								{@const isSelected = selectedSlot === slot}
+								{@const isSelected = selectedSlot?.start === slot.start && selectedSlot?.end === slot.end}
 								<button
 									type="button"
 									onclick={() => selectSlot(slot)}

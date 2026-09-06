@@ -26,7 +26,7 @@
 </script>
 
 <!-- ===== USER STYLE ANCHOR: availability-slot-picker (time slots) ===== -->
-<div class="w-64 shrink-0 border-l border-border p-6 flex flex-col min-h-0" style="max-height: 440px;">
+<div class="w-64 shrink-0 border-l border-border p-6 flex flex-col min-h-0" style="max-height: 544px;">
 	{#if loading}
 		<div class="flex items-center justify-center py-8">
 			<div class="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style="border-color: {brandColor}; border-top-color: transparent"></div>
@@ -39,14 +39,15 @@
 	{:else}
 		<div class="space-y-2 overflow-y-auto flex-1 min-h-0 pr-2 scrollbar-thin">
 			{#each availableSlots as slot}
+				{@const isSelected = selectedSlot?.start === slot.start && selectedSlot?.end === slot.end}
 				<button
 					type="button"
 					onclick={() => onSelectSlot(slot)}
 					class="w-full py-2.5 px-3 border-2 rounded-lg text-sm font-semibold transition"
-					class:border-accent={selectedSlot === slot}
-					class:bg-accent={selectedSlot === slot}
-					class:text-white={selectedSlot === slot}
-					style={selectedSlot === slot ? '' : `border-color: ${brandColor}; color: ${brandColor}`}
+					class:border-accent={isSelected}
+					class:bg-accent={isSelected}
+					class:text-white={isSelected}
+					style={isSelected ? '' : `border-color: ${brandColor}; color: ${brandColor}`}
 				>
 					{formatTime(slot.start)}
 				</button>
