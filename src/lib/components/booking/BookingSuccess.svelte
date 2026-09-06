@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { MeetingType } from '$lib/meeting';
 	import { meetingJoinLabel } from '$lib/meeting';
+	import { buildGoogleCalendarUrl, downloadIcsFile } from '$lib/utils/calendarLinks';
 
 	interface Props {
 		eventName: string;
@@ -27,22 +28,37 @@
 	}: Props = $props();
 
 	const joinLabel = meetingJoinLabel(meetingType);
+
+	const calendarEvent = $derived({
+		title: eventName,
+		start: selectedSlot.start,
+		end: selectedSlot.end,
+		meetingUrl,
+		joinLabel,
+		bookingId
+	});
+
+	const googleCalendarUrl = $derived(buildGoogleCalendarUrl(calendarEvent));
+
+	function handleDownloadIcs() {
+		downloadIcsFile(calendarEvent);
+	}
 </script>
 
 <!-- ===== USER STYLE ANCHOR: confirmation-view ===== -->
 <div class="bg-bg border border-border rounded-large shadow-lg p-6 sm:p-8 max-w-md w-[calc(100%-1rem)] sm:w-full mx-2">
 	<div class="text-center">
-		<div class="w-16 h-16 sm:w-20 sm:h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-			<svg class="w-8 h-8 sm:w-10 sm:h-10 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+		<div class="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-accent bg-transparent sm:mb-5 sm:h-28 sm:w-28">
+			<svg class="h-16 w-16 text-accent sm:h-20 sm:w-20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
 			</svg>
 		</div>
 		<h1 class="font-display text-xl sm:text-2xl font-medium text-text mb-2">You are scheduled</h1>
-		<p class="text-text-secondary mb-6 sm:mb-8 text-sm sm:text-base">A calendar invitation has been sent to your email address.</p>
+		<p class="mb-4 text-sm text-text-secondary sm:mb-5 sm:text-base">A calendar invitation has been sent to your email address.</p>
 
-		<div class="bg-bg-secondary rounded-lg p-4 sm:p-6 text-left mb-6">
-			<h3 class="font-semibold text-text mb-3 sm:mb-4">{eventName}</h3>
-			<div class="space-y-3 text-sm">
+		<div class="mb-4 rounded-lg border border-border bg-[var(--field-bg)] p-6 text-left sm:mb-5">
+			<h3 class="mb-4 font-semibold text-text">{eventName}</h3>
+			<div class="space-y-4 text-sm">
 				<div class="flex items-start gap-3">
 					<svg class="w-5 h-5 text-text-secondary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -53,21 +69,59 @@
 					</div>
 				</div>
 				{#if meetingUrl}
-					<div class="flex items-start gap-3">
-						<svg class="w-5 h-5 text-text-secondary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
 						</svg>
-						<a href={meetingUrl} target="_blank" class="break-all pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors" style="color: {brandColor}">{joinLabel}</a>
+						<a
+							href={meetingUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="link-underline break-all"
+							style="color: {brandColor}"
+						>{joinLabel}</a>
 					</div>
 				{/if}
+				<div class="flex items-center gap-3">
+					<svg class="w-5 h-5 text-text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11v6m-3-3h6"></path>
+					</svg>
+					<a
+						href={googleCalendarUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="link-underline"
+						style="color: {brandColor}"
+					>Add to Google Calendar</a>
+				</div>
+				<div class="flex items-center gap-3">
+					<svg class="w-5 h-5 text-text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+					</svg>
+					<button
+						type="button"
+						onclick={handleDownloadIcs}
+						class="link-underline rounded-sm bg-transparent border-0 p-0 font-inherit text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+						style="color: {brandColor}"
+					>Download .ics</button>
+				</div>
 			</div>
 		</div>
 
 		{#if bookingId}
-			<div class="flex items-center justify-center gap-4 text-sm">
-				<a href={`/reschedule/${bookingId}`} class="pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors" style="color: {brandColor}">Reschedule</a>
-				<span class="text-text-secondary">&middot;</span>
-				<a href={`/cancel/${bookingId}`} class="pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors" style="color: {brandColor}">Cancel</a>
+			<div class="flex items-center justify-center gap-3 text-sm text-text-secondary">
+				<a
+					href={`/reschedule/${bookingId}`}
+					class="link-underline"
+					style="color: {brandColor}"
+				>Reschedule</a>
+				<span class="select-none leading-none text-text-secondary" aria-hidden="true">&middot;</span>
+				<a
+					href={`/cancel/${bookingId}`}
+					class="link-underline"
+					style="color: {brandColor}"
+				>Cancel</a>
 			</div>
 		{/if}
 	</div>

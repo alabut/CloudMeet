@@ -40,7 +40,7 @@
 				id="name"
 				bind:value={bookingForm.name}
 				required
-				class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:border-transparent outline-none"
+				class="w-full px-4 py-3 bg-[var(--field-bg)] border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:border-transparent outline-none"
 				style="--tw-ring-color: {brandColor}"
 			/>
 		</div>
@@ -51,7 +51,7 @@
 				id="email"
 				bind:value={bookingForm.email}
 				required
-				class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:border-transparent outline-none"
+				class="w-full px-4 py-3 bg-[var(--field-bg)] border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:border-transparent outline-none"
 				style="--tw-ring-color: {brandColor}"
 			/>
 		</div>
@@ -63,7 +63,7 @@
 				id="notes"
 				bind:value={bookingForm.notes}
 				rows="4"
-				class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:border-transparent outline-none resize-none"
+				class="w-full px-4 py-3 bg-[var(--field-bg)] border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:border-transparent outline-none resize-none"
 				style="--tw-ring-color: {brandColor}"
 			></textarea>
 		</div>

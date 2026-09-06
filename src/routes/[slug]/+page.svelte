@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { page } from '$app/stores';
 	import type { PageData } from './$types';
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
 	import { createBrandColors } from '$lib/utils/colorUtils';
@@ -11,6 +12,53 @@
 	import { meetingShortLabel, meetingTypeForInviteCalendar } from '$lib/meeting';
 
 	let { data }: { data: PageData } = $props();
+
+	const PREVIEW_BOOKING_ID = 'preview-sample-booking';
+	const PREVIEW_MEETING_URL = 'https://zoom.us/j/12345678901';
+
+	function isLoopbackHost(hostname: string): boolean {
+		return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
+	}
+
+	const isSuccessPreview = $derived(
+		browser &&
+			isLoopbackHost(window.location.hostname) &&
+			$page.url.searchParams.get('preview') === 'success'
+	);
+
+	// Loopback-only ?preview=details QA — desktop Enter Details state without calendar OAuth.
+	const isDetailsPreview = $derived(
+		browser &&
+			isLoopbackHost(window.location.hostname) &&
+			$page.url.searchParams.get('preview') === 'details'
+	);
+
+	const isLocalPreview = $derived(isSuccessPreview || isDetailsPreview);
+
+	const previewSample = $derived.by(() => {
+		const start = new Date();
+		start.setDate(start.getDate() + 3);
+		start.setHours(14, 0, 0, 0);
+		const end = new Date(start);
+		end.setMinutes(end.getMinutes() + 30);
+		return {
+			date: formatDateLocal(start),
+			slot: { start: start.toISOString(), end: end.toISOString() }
+		};
+	});
+
+	/** Static slot list for loopback ?preview=details only — never used outside local QA. */
+	function getLocalPreviewSlots(sampleSlot: { start: string; end: string }) {
+		const day = new Date(sampleSlot.start);
+		const durationMs = new Date(sampleSlot.end).getTime() - day.getTime();
+		return [9, 10, 11, 13, 14, 15, 16].map((hour) => {
+			if (hour === 14) return sampleSlot;
+			const start = new Date(day);
+			start.setHours(hour, 0, 0, 0);
+			const end = new Date(start.getTime() + durationMs);
+			return { start: start.toISOString(), end: end.toISOString() };
+		});
+	}
 
 	// Sanitize event description to prevent XSS (only in browser, SSR uses escaped version)
 	let sanitizedDescription = $state('');
@@ -60,6 +108,7 @@
 	let meetingUrl = $state<string | null>(null);
 	let meetingType = $state<MeetingType>('zoom');
 	let confirmedBookingId = $state<string | null>(null);
+	let localDetailsPreviewReady = false;
 
 	// Track which dates have available slots
 	let availableDates = $state<Set<string>>(new Set());
@@ -163,6 +212,8 @@
 	}
 
 	async function fetchMonthAvailability() {
+		if (isDetailsPreview) return;
+
 		loadingAvailability = true;
 
 		try {
@@ -191,19 +242,46 @@
 	}
 
 	$effect(() => {
+		if (isLocalPreview) return;
 		fetchMonthAvailability();
+	});
+
+	$effect(() => {
+		if (!isDetailsPreview) {
+			localDetailsPreviewReady = false;
+			return;
+		}
+		if (localDetailsPreviewReady) return;
+		localDetailsPreviewReady = true;
+
+		selectedDate = previewSample.date;
+		selectedSlot = previewSample.slot;
+		showForm = true;
+		availableSlots = getLocalPreviewSlots(previewSample.slot);
+		availableDates = new Set([previewSample.date]);
+		const sampleDay = new Date(`${previewSample.date}T12:00:00`);
+		currentMonth = new Date(sampleDay.getFullYear(), sampleDay.getMonth(), 1);
 	});
 
 	// Scroll back to the top when the success screen appears -- the user may have
 	// scrolled deep into the form before submitting, and the view swap keeps the
 	// old scroll offset otherwise.
 	$effect(() => {
-		if (bookingStatus === 'success' && browser) {
+		if ((bookingStatus === 'success' || isSuccessPreview) && browser) {
 			window.scrollTo(0, 0);
 		}
 	});
 
 	async function handleDateSelect(dateStr: string, advanceMobile = true) {
+		if (isDetailsPreview) {
+			selectedDate = dateStr;
+			selectedSlot = dateStr === previewSample.date ? previewSample.slot : null;
+			showForm = false;
+			availableSlots = dateStr === previewSample.date ? getLocalPreviewSlots(previewSample.slot) : [];
+			if (advanceMobile) mobileStep = 'times';
+			return;
+		}
+
 		selectedDate = dateStr;
 		selectedSlot = null;
 		showForm = false;
@@ -232,6 +310,10 @@
 		mobileStep = 'form';
 	}
 
+	function changeTime() {
+		showForm = false;
+	}
+
 	function goBackMobile() {
 		if (mobileStep === 'form') {
 			mobileStep = 'times';
@@ -246,6 +328,8 @@
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
+		if (isDetailsPreview) return;
+
 		bookingStatus = 'submitting';
 		bookingError = '';
 
@@ -306,27 +390,108 @@
 
 <!-- ===== USER STYLE ANCHOR: booking-page-layout-wrapper ===== -->
 <div
-	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center md:justify-start md:px-gutter md:py-10"
+	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center {bookingStatus === 'success' || isSuccessPreview ? '' : 'md:px-gutter'}"
 	style="--brand-color: {brandColor}; --brand-light: {brandDark}; --brand-lighter: {brandLighter}; --brand-dark: {brandDark}; --brand-rgb: {colors.rgb.r}, {colors.rgb.g}, {colors.rgb.b};"
 >
-	{#if bookingStatus === 'success'}
+	{#if bookingStatus === 'success' || isSuccessPreview}
 		<!-- Success Screen -->
-		<BookingSuccess
-			eventName={displayEventName}
-			{selectedDate}
-			{selectedSlot}
-			{meetingUrl}
-			{meetingType}
-			bookingId={confirmedBookingId}
-			{brandColor}
-			{formatTimeRange}
-			{formatSelectedDate}
-		/>
+		<div class="flex min-h-screen w-full items-start justify-center px-2 py-8 md:items-center md:px-gutter md:py-12">
+			<BookingSuccess
+				eventName={displayEventName}
+				selectedDate={isSuccessPreview ? previewSample.date : (selectedDate ?? '')}
+				selectedSlot={isSuccessPreview ? previewSample.slot : (selectedSlot ?? { start: '', end: '' })}
+				meetingUrl={isSuccessPreview ? PREVIEW_MEETING_URL : meetingUrl}
+				meetingType={isSuccessPreview ? 'zoom' : meetingType}
+				bookingId={isSuccessPreview ? PREVIEW_BOOKING_ID : confirmedBookingId}
+				{brandColor}
+				{formatTimeRange}
+				{formatSelectedDate}
+			/>
+		</div>
 	{:else}
-		<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
+		<!-- Desktop: vertically center identity + booking card when content fits viewport -->
+		<div class="hidden w-full max-w-[920px] md:flex md:min-h-screen md:flex-col md:justify-center">
+			<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
+
+			<div class="w-full">
+				<div class="flex min-h-[544px] w-full bg-bg border border-border rounded-large overflow-hidden">
+					<!-- Left Sidebar -->
+					<EventSidebar
+						user={data.user}
+						eventType={data.eventType}
+						{selectedDate}
+						{selectedSlot}
+						{brandColor}
+						{formatTime}
+						displayName={desktopSchedulerHeading}
+						{displayDescription}
+						timezoneLabel={getTimezoneWithTime(selectedTimezone, use12Hour)}
+						{selectedTimezone}
+						{showTimezoneDropdown}
+						showSelectionSummary={showForm}
+						onChangeTime={changeTime}
+						onTimezoneToggle={() => showTimezoneDropdown = !showTimezoneDropdown}
+						onTimezoneSelect={(tz) => selectedTimezone = tz}
+						onTimezoneClose={() => showTimezoneDropdown = false}
+					/>
+
+					<!-- Main Content -->
+					<div class="flex min-h-[544px] flex-1 flex-col">
+						{#if showForm}
+							<div class="flex flex-1 flex-col p-6">
+								<BookingForm
+									bind:bookingForm
+									{bookingStatus}
+									{bookingError}
+									{brandColor}
+									{brandDark}
+									onSubmit={handleSubmit}
+								/>
+							</div>
+						{:else}
+							<div class="flex min-h-[544px] flex-1 items-stretch">
+								<div class={selectedDate ? 'w-[408px] shrink-0 p-6' : 'flex min-w-0 flex-1 justify-center p-6'}>
+									<div class="w-[360px] max-w-full">
+										{#if data.slug !== '30min'}
+											<h2 class="font-display text-xl font-medium text-text mb-6">Select a Date & Time</h2>
+										{/if}
+
+										<BookingCalendar
+											{currentMonth}
+											{selectedDate}
+											{availableDates}
+											{brandColor}
+											{brandLighter}
+											{brandDark}
+											onDateSelect={handleDateSelect}
+											onPrevMonth={prevMonth}
+											onNextMonth={nextMonth}
+										/>
+									</div>
+								</div>
+
+								{#if selectedDate}
+									<TimeSlotList
+										{availableSlots}
+										{selectedSlot}
+										{loading}
+										{brandColor}
+										{formatTime}
+										onSelectSlot={selectSlot}
+										onConfirm={confirmSlot}
+									/>
+								{/if}
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		</div>
 
 		<!-- MOBILE LAYOUT (< 768px) - Full white page -->
-		<div class="md:hidden min-h-screen w-full bg-bg">
+		<div class="md:hidden w-full">
+			<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
+			<div class="min-h-screen w-full bg-bg">
 			<!-- Cover Image with black line below -->
 			{#if data.eventType?.cover_image}
 				<div class="px-6 pt-6 flex justify-center">
@@ -472,7 +637,7 @@
 					{:else}
 						<div class="grid grid-cols-2 gap-3">
 							{#each availableSlots as slot}
-								{@const isSelected = selectedSlot === slot}
+								{@const isSelected = selectedSlot?.start === slot.start && selectedSlot?.end === slot.end}
 								<button
 									type="button"
 									onclick={() => selectSlot(slot)}
@@ -516,7 +681,7 @@
 								id="mobile-name"
 								bind:value={bookingForm.name}
 								required
-								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
+								class="w-full px-4 py-3 bg-[var(--field-bg)] border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
 							/>
 						</div>
 						<div>
@@ -526,7 +691,7 @@
 								id="mobile-email"
 								bind:value={bookingForm.email}
 								required
-								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
+								class="w-full px-4 py-3 bg-[var(--field-bg)] border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none"
 							/>
 						</div>
 						<div>
@@ -537,7 +702,7 @@
 								id="mobile-notes"
 								bind:value={bookingForm.notes}
 								rows="4"
-								class="w-full px-4 py-3 bg-bg-secondary border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none resize-none"
+								class="w-full px-4 py-3 bg-[var(--field-bg)] border border-border rounded-lg text-text placeholder:text-text-secondary focus:ring-2 focus:ring-accent focus:border-accent outline-none resize-none"
 							></textarea>
 						</div>
 						<button
@@ -551,85 +716,6 @@
 				</div>
 			{/if}
 
-		</div>
-
-		<!-- DESKTOP LAYOUT (>= 768px) -->
-		<div class="hidden w-full max-w-[920px] md:block">
-		<div class="flex min-h-[440px] w-full bg-bg border border-border rounded-large overflow-hidden">
-			<!-- Left Sidebar -->
-			<EventSidebar
-				user={data.user}
-				eventType={data.eventType}
-				{selectedDate}
-				{selectedSlot}
-				{brandColor}
-				{formatTime}
-				displayName={desktopSchedulerHeading}
-				{displayDescription}
-				timezoneLabel={getTimezoneWithTime(selectedTimezone, use12Hour)}
-				{selectedTimezone}
-				{showTimezoneDropdown}
-				onTimezoneToggle={() => showTimezoneDropdown = !showTimezoneDropdown}
-				onTimezoneSelect={(tz) => selectedTimezone = tz}
-				onTimezoneClose={() => showTimezoneDropdown = false}
-			/>
-
-			<!-- Main Content -->
-			<div class="flex-1">
-				{#if bookingError}
-					<div class="m-6 mb-0 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg p-4 max-w-2xl">
-						{bookingError}
-					</div>
-				{/if}
-
-				{#if showForm}
-					<div class="p-6">
-					<BookingForm
-						bind:bookingForm
-						{bookingStatus}
-						{bookingError}
-						{brandColor}
-						{brandDark}
-						onSubmit={handleSubmit}
-					/>
-					</div>
-				{:else}
-					<div class="flex min-h-[440px] items-stretch">
-						<div class={selectedDate ? 'w-[408px] shrink-0 p-6' : 'flex min-w-0 flex-1 justify-center p-6'}>
-						<div class="w-[360px] max-w-full">
-							{#if data.slug !== '30min'}
-								<h2 class="font-display text-xl font-medium text-text mb-6">Select a Date & Time</h2>
-							{/if}
-
-							<BookingCalendar
-								{currentMonth}
-								{selectedDate}
-								{availableDates}
-								{brandColor}
-								{brandLighter}
-								{brandDark}
-								onDateSelect={handleDateSelect}
-								onPrevMonth={prevMonth}
-								onNextMonth={nextMonth}
-							/>
-						</div>
-						</div>
-
-						{#if selectedDate}
-							<TimeSlotList
-								{selectedDate}
-								{availableSlots}
-								{selectedSlot}
-								{loading}
-								{brandColor}
-								{formatTime}
-								onSelectSlot={selectSlot}
-								onConfirm={confirmSlot}
-							/>
-						{/if}
-					</div>
-				{/if}
-			</div>
 		</div>
 		</div>
 

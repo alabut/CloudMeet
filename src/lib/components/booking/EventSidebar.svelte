@@ -29,6 +29,8 @@
 		onTimezoneToggle: () => void;
 		onTimezoneSelect: (timezone: string) => void;
 		onTimezoneClose: () => void;
+		showSelectionSummary?: boolean;
+		onChangeTime?: () => void;
 	}
 
 	let {
@@ -45,7 +47,9 @@
 		showTimezoneDropdown,
 		onTimezoneToggle,
 		onTimezoneSelect,
-		onTimezoneClose
+		onTimezoneClose,
+		showSelectionSummary = false,
+		onChangeTime
 	}: Props = $props();
 
 	// Sanitize event description to prevent XSS (only in browser, SSR uses raw since admin-entered)
@@ -129,7 +133,7 @@
 			</div>
 		</div>
 
-		{#if selectedDate && selectedSlot}
+		{#if showSelectionSummary && selectedDate && selectedSlot}
 			<div class="mt-6 pt-6 border-t border-border">
 				<div class="flex items-center gap-3 text-sm">
 					<svg class="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,6 +144,18 @@
 						<p class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mt-1">{formatSelectedDate(selectedDate)}</p>
 					</div>
 				</div>
+				{#if onChangeTime}
+					<button
+						type="button"
+						onclick={onChangeTime}
+						class="mt-3 flex items-center gap-1.5 py-1 -ml-1 px-1 text-sm text-accent link-underline rounded-sm bg-transparent border-0 font-inherit cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+					>
+						<svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+						</svg>
+						<span>Change time</span>
+					</button>
+				{/if}
 			</div>
 		{/if}
 	</div>
