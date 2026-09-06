@@ -55,19 +55,24 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 
 ---
 
-## What’s next (infra) — when energy is back
+## Watchdog status (2026-09-06)
 
-1. **Watchdog (the remaining “bulletproof” piece)**  
-   Create a [healthchecks.io](https://healthchecks.io) check: period 5 min, grace 15–30 min, email `alabut@gmail.com`.  
-   GitHub secret `HEALTHCHECK_URL` = `https://hc-ping.com/<uuid>`.  
-   Re-run deploy (or push) so the cron worker gets the secret.  
-   QA: Healthchecks “send test notification”; wait one tick until the check is **Up**. Do **not** revoke Google to test `/fail`.
+- Healthchecks check **CloudMeet cron** is created (Simple schedule; hobby-friendly period/grace — typically 1 day / 1 hour).
+- `HEALTHCHECK_URL` is set on GitHub Actions secrets **and** the live `cloudmeet-cron` worker.
+- Manual success ping returned HTTP 200 (check should show **Up**).
+- Cron still runs every 5 minutes and will ping success or `/fail` on its own; you only get email when Google/cron is actually down (or from Healthchecks’ test notification).
 
-2. Optional: hide cancelled bookings on the dashboard (product, not blocking).
+### Still do once (human QA)
+1. In Healthchecks, confirm the check is **Up**.
+2. Use **Send a test notification** once — proves email delivery to `alabut@gmail.com`.
+3. Optional: wait ~5–10 minutes and refresh the check’s ping log to see a ping from Cloudflare (not just the manual one).
 
-3. Optional later: Resend for host-only alerts or reminders — not required for sharing the booking link.
+## What’s next (infra) — optional after watchdog QA
 
-4. Hygiene: rename GCP project `workspace-mcp` when you care; don’t create extra projects for CloudMeet.
+1. Optional: hide cancelled bookings on the dashboard (product, not blocking).
+2. Optional later: Resend for host-only alerts or reminders — not required for sharing the booking link.
+3. Hygiene: rename GCP project `workspace-mcp` when you care; don’t create extra projects for CloudMeet.
+4. Rotate the Cloudflare API token that appeared in an earlier chat, when convenient.
 
 **Do not** enable Emailit. **Do not** click Back to testing in Google Auth Audience.
 
