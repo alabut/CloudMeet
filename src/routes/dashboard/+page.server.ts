@@ -5,6 +5,10 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getCurrentUser } from '$lib/server/auth';
+import {
+	googleCalendarHealthMessage,
+	probeGoogleCalendarHealth
+} from '$lib/server/google-calendar-health';
 
 export const load: PageServerLoad = async (event) => {
 	const userId = await getCurrentUser(event);
@@ -14,7 +18,8 @@ export const load: PageServerLoad = async (event) => {
 	}
 
 	const db = event.platform?.env?.DB;
-	if (!db) {
+	const env = event.platform?.env;
+	if (!db || !env) {
 		throw new Error('Database not available');
 	}
 
@@ -72,12 +77,20 @@ export const load: PageServerLoad = async (event) => {
 			cancellation_reason: string | null;
 		}>();
 
-	const appUrl = event.platform?.env?.APP_URL || '';
+	const appUrl = env.APP_URL || '';
+	const googleHealth = await probeGoogleCalendarHealth(
+		db,
+		userId,
+		env.GOOGLE_CLIENT_ID,
+		env.GOOGLE_CLIENT_SECRET
+	);
 
 	return {
 		user,
 		eventTypes: eventTypes.results,
 		recentBookings: recentBookings.results,
-		appUrl
+		appUrl,
+		googleCalendarOk: googleHealth.ok,
+		googleCalendarWarning: googleCalendarHealthMessage(googleHealth)
 	};
 };

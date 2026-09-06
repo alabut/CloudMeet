@@ -189,6 +189,10 @@ export const actions: Actions = {
 				newGoogleEventId = calendarEvent.id;
 			} catch (err) {
 				console.error('Failed to create new calendar event:', err);
+				return fail(503, {
+					error:
+						'Google Calendar could not be updated. The host may need to reconnect Google Calendar.'
+				});
 			}
 
 			// Update the original booking with new times

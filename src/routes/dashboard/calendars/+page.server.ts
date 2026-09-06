@@ -5,6 +5,10 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getCurrentUser } from '$lib/server/auth';
+import {
+	googleCalendarHealthMessage,
+	probeGoogleCalendarHealth
+} from '$lib/server/google-calendar-health';
 
 export const load: PageServerLoad = async (event) => {
 	const userId = await getCurrentUser(event);
@@ -14,10 +18,13 @@ export const load: PageServerLoad = async (event) => {
 	}
 
 	const db = event.platform?.env?.DB;
-	if (!db) {
+	const env = event.platform?.env;
+	if (!db || !env) {
 		return {
 			user: null,
-			outlookConfigured: false
+			outlookConfigured: false,
+			googleCalendarOk: false,
+			googleCalendarWarning: 'Platform environment not available.'
 		};
 	}
 
@@ -28,7 +35,7 @@ export const load: PageServerLoad = async (event) => {
 		.first<{ id: string; google_refresh_token: string | null; outlook_refresh_token: string | null; settings: string | null }>();
 
 	// Check if Microsoft OAuth is configured
-	const outlookConfigured = !!(event.platform?.env?.MICROSOFT_CLIENT_ID && event.platform?.env?.MICROSOFT_CLIENT_SECRET);
+	const outlookConfigured = !!(env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET);
 
 	// Parse user settings for global calendar defaults
 	let userSettings: {
@@ -42,14 +49,26 @@ export const load: PageServerLoad = async (event) => {
 		userSettings = {};
 	}
 
+	const googleHealth = await probeGoogleCalendarHealth(
+		db,
+		userId,
+		env.GOOGLE_CLIENT_ID,
+		env.GOOGLE_CLIENT_SECRET
+	);
+
 	return {
-		user: user ? {
-			googleConnected: !!user.google_refresh_token,
-			outlookConnected: !!user.outlook_refresh_token,
-			defaultAvailabilityCalendars: userSettings.defaultAvailabilityCalendars,
-			defaultInviteCalendar: userSettings.defaultInviteCalendar,
-			selectedGoogleCalendars: userSettings.selectedGoogleCalendars
-		} : null,
-		outlookConfigured
+		user: user
+			? {
+					googleConnected: !!user.google_refresh_token,
+					googleHealthy: googleHealth.ok,
+					outlookConnected: !!user.outlook_refresh_token,
+					defaultAvailabilityCalendars: userSettings.defaultAvailabilityCalendars,
+					defaultInviteCalendar: userSettings.defaultInviteCalendar,
+					selectedGoogleCalendars: userSettings.selectedGoogleCalendars
+				}
+			: null,
+		outlookConfigured,
+		googleCalendarOk: googleHealth.ok,
+		googleCalendarWarning: googleCalendarHealthMessage(googleHealth)
 	};
 };

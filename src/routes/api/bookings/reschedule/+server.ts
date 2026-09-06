@@ -156,7 +156,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			newCalendarEventId = calendarEvent.id;
 		} catch (err) {
 			console.error('Error with Google Calendar:', err);
-			// Continue without calendar event if there's an error
+			const detail = err instanceof Error ? err.message : String(err);
+			if (detail.includes('invalid_grant') || detail.includes('expired or revoked')) {
+				throw error(
+					503,
+					'Google Calendar access expired. The host needs to reconnect Google before this meeting can be rescheduled.'
+				);
+			}
+			throw error(503, 'Could not update the Google Calendar invitation. Please try again.');
 		}
 
 		// Update the booking with new times (keeping attendee info) and set status to confirmed

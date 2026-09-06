@@ -265,8 +265,14 @@
 			});
 
 			if (!response.ok) {
-				const errData = await response.json() as { message?: string };
-				throw new Error(errData.message || 'Failed to create booking');
+				let message = 'Failed to create booking';
+				try {
+					const errData = await response.json() as { message?: string };
+					if (errData.message) message = errData.message;
+				} catch {
+					// keep default
+				}
+				throw new Error(message);
 			}
 
 			const result = await response.json() as { bookingId?: string; meetingUrl?: string; meetingType?: MeetingType };

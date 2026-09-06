@@ -189,7 +189,17 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				googleEventId = calendarEvent.id;
 			} catch (err) {
 				console.error('Error creating Google Calendar event:', err);
-				// Continue without Google Calendar event if there's an error
+				const detail = err instanceof Error ? err.message : String(err);
+				if (detail.includes('invalid_grant') || detail.includes('expired or revoked')) {
+					throw error(
+						503,
+						'Google Calendar access expired. The host needs to reconnect Google before this time can be booked.'
+					);
+				}
+				throw error(
+					503,
+					'Could not create the Google Calendar invitation. Please try again in a moment.'
+				);
 			}
 		} else if (inviteCalendar === 'outlook' && env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET) {
 			const calendarDescription = buildCalendarEventDescription({
@@ -225,8 +235,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 				}
 			} catch (err) {
 				console.error('Error creating Outlook Calendar event:', err);
-				// Continue without Outlook Calendar event if there's an error
+				throw error(
+					503,
+					'Could not create the Outlook calendar invitation. Please try again in a moment.'
+				);
 			}
+		} else if (inviteCalendar === 'outlook') {
+			throw error(503, 'Outlook Calendar is selected but not configured.');
 		}
 
 		// Create booking in database

@@ -141,6 +141,19 @@
 	</header>
 
 	<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+		{#if data.googleCalendarWarning}
+			<div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">
+				<p class="font-semibold">Google Calendar needs attention</p>
+				<p class="mt-1 text-sm">{data.googleCalendarWarning}</p>
+				<a
+					href="/auth/login"
+					class="mt-3 inline-flex rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700"
+				>
+					Reconnect Google
+				</a>
+			</div>
+		{/if}
+
 		<!-- Profile Section -->
 		<ProfileSection user={data.user} />
 

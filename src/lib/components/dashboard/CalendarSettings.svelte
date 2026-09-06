@@ -10,15 +10,17 @@
 	interface Props {
 		user: {
 			googleConnected?: boolean;
+			googleHealthy?: boolean;
 			outlookConnected?: boolean;
 			defaultAvailabilityCalendars?: 'google' | 'outlook' | 'both';
 			defaultInviteCalendar?: 'google' | 'outlook';
 			selectedGoogleCalendars?: string[];
 		} | null;
 		outlookConfigured: boolean;
+		googleCalendarWarning?: string | null;
 	}
 
-	let { user, outlookConfigured }: Props = $props();
+	let { user, outlookConfigured, googleCalendarWarning = null }: Props = $props();
 
 	let error = $state('');
 	let saving = $state(false);
@@ -47,9 +49,9 @@
 	let availabilityCalendars = $state(getDefaultAvailability());
 	let inviteCalendar = $state(getDefaultInvite());
 
-	// Load Google calendars on mount
+	// Load Google calendars on mount when the token is healthy
 	onMount(async () => {
-		if (hasGoogle) {
+		if (user?.googleHealthy) {
 			await loadGoogleCalendars();
 		}
 	});
@@ -131,6 +133,19 @@
 		</div>
 	{/if}
 
+	{#if googleCalendarWarning}
+		<div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">
+			<p class="text-sm font-semibold">Google Calendar needs attention</p>
+			<p class="mt-1 text-sm">{googleCalendarWarning}</p>
+			<a
+				href="/auth/login"
+				class="mt-3 inline-flex rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700"
+			>
+				Reconnect Google
+			</a>
+		</div>
+	{/if}
+
 	<div class="space-y-4">
 		<!-- Google Calendar -->
 		<div class="flex flex-wrap items-center justify-between gap-3 p-4 bg-gray-50 rounded-lg">
@@ -151,14 +166,24 @@
 				<div>
 					<h4 class="font-medium text-gray-900">Google Calendar</h4>
 					<p class="text-sm text-gray-600">
-						{#if user?.googleConnected}
-							<span class="text-green-600">Connected</span> <span class="text-gray-500">(via login)</span>
+						{#if user?.googleHealthy}
+							<span class="text-green-600">Connected and healthy</span>
+						{:else if user?.googleConnected}
+							<span class="text-amber-600">Token expired — reconnect required</span>
 						{:else}
 							<span class="text-gray-500">Not connected</span>
 						{/if}
 					</p>
 				</div>
 			</div>
+			{#if !user?.googleHealthy}
+				<a
+					href="/auth/login"
+					class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+				>
+					Reconnect
+				</a>
+			{/if}
 		</div>
 
 		<!-- Outlook Calendar -->
