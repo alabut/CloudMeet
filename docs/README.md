@@ -1,6 +1,4 @@
-# Docs
-
-- **DEPLOY.md** — Deploy runbook for Cloudflare Pages/Workers/D1
+- **BREAKPOINT.md** — Current pause: infra vs design, Google/Zoom/cron status, what to do next. **Start here** if a chat was compacted.
 - **SETUP-NOTES.md** — Log of setup deviations, assumptions, and what's been verified live
 - **STYLE-MAP.md** — Anchor comments marking the files to restyle by hand
 - **TWEAKS.md** — The improvement backlog
