@@ -71,6 +71,83 @@ Sections:
 }
 
 @layer components {
+	/* ===== USER STYLE ANCHOR: dashboard-flow-tokens =====
+	   Token set for the authenticated management dashboard. Dark-first with
+	   cream light mode (same brand accent orange). Denser task-oriented
+	   typography (14–16px body vs public-flow's 20px). Named with --dash-*
+	   prefix to avoid collision with public-flow tokens. Applied via the
+	   ".dashboard-flow" class on the outermost wrapper of each dashboard page. */
+	.dashboard-flow {
+		/* Dark mode defaults */
+		--dash-bg: #0f0f0f;
+		--dash-surface: #1a1a1a;
+		--dash-surface-raised: #222222;
+		--dash-field: #1e1e1e;
+		--dash-text: #e8e8e8;
+		--dash-text-secondary: rgba(255, 255, 255, 0.45);
+		--dash-border: rgba(255, 255, 255, 0.12);
+		--dash-accent: #f15403;
+		--dash-accent-hover: #ff7a33;
+		--dash-danger: #f87171;
+		--dash-danger-surface: rgba(248, 113, 113, 0.12);
+		--dash-danger-border: rgba(248, 113, 113, 0.35);
+		--dash-attention: #fbbf24;
+		--dash-attention-surface: rgba(251, 191, 36, 0.12);
+		--dash-attention-border: rgba(251, 191, 36, 0.35);
+
+		/* Opt this subtree into the dark-first palette for UA-rendered controls */
+		color-scheme: dark light;
+
+		font-size: 15px;
+		line-height: 150%;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	@media (prefers-color-scheme: light) {
+		.dashboard-flow {
+			--dash-bg: #f7f4e9;
+			--dash-surface: #ffffff;
+			--dash-surface-raised: #ffffff;
+			--dash-field: #ffffff;
+			--dash-text: #1a1a1a;
+			--dash-text-secondary: rgba(0, 0, 0, 0.5);
+			--dash-border: rgba(0, 0, 0, 0.12);
+			--dash-danger: #dc2626;
+			--dash-danger-surface: rgba(220, 38, 38, 0.08);
+			--dash-danger-border: rgba(220, 38, 38, 0.25);
+			--dash-attention: #b45309;
+			--dash-attention-surface: rgba(180, 83, 9, 0.08);
+			--dash-attention-border: rgba(180, 83, 9, 0.25);
+			/* --dash-accent and --dash-accent-hover stay the same in both themes */
+		}
+	}
+
+	.dashboard-flow :is(h1, h2, h3, h4, h5, h6) {
+		font-family: var(--font-sans);
+		text-rendering: optimizeLegibility;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	/* font-display: headings and primary UI labels */
+	.dashboard-flow .dash-heading {
+		font-family: var(--font-sans);
+		font-weight: 500;
+		letter-spacing: -0.01em;
+	}
+
+	/* font-serif: detail and descriptive copy */
+	.dashboard-flow .dash-detail {
+		font-family: var(--font-serif);
+	}
+
+	/* font-meta: timestamps, IDs, metadata labels */
+	.dashboard-flow .dash-meta {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+
 	/* ===== USER STYLE ANCHOR: public-flow-typography =====
 	   Shared typography rules for the visitor-facing flow (homepage, booking,
 	   cancel, reschedule, reschedule-response). Applied once via the

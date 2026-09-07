@@ -26,6 +26,23 @@ export default {
         border: 'var(--border)',
         accent: 'var(--accent)',
         'accent-hover': 'var(--accent-hover)',
+        // Dashboard flow tokens — prefixed dash- to avoid collision with public-flow
+        // tokens above. All resolve to CSS vars set on .dashboard-flow.
+        'dash-bg': 'var(--dash-bg)',
+        'dash-surface': 'var(--dash-surface)',
+        'dash-surface-raised': 'var(--dash-surface-raised)',
+        'dash-field': 'var(--dash-field)',
+        'dash-text': 'var(--dash-text)',
+        'dash-text-secondary': 'var(--dash-text-secondary)',
+        'dash-border': 'var(--dash-border)',
+        'dash-accent': 'var(--dash-accent)',
+        'dash-accent-hover': 'var(--dash-accent-hover)',
+        'dash-danger': 'var(--dash-danger)',
+        'dash-danger-surface': 'var(--dash-danger-surface)',
+        'dash-danger-border': 'var(--dash-danger-border)',
+        'dash-attention': 'var(--dash-attention)',
+        'dash-attention-surface': 'var(--dash-attention-surface)',
+        'dash-attention-border': 'var(--dash-attention-border)',
       },
       fontFamily: {
         serif: ['var(--font-serif)'],
