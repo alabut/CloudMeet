@@ -453,6 +453,17 @@
 		</div>
 	</section>
 
+	<!-- Other design systems -->
+	<section class="mb-8">
+		<h2 class="font-display text-xl font-medium text-text mb-4">Other systems</h2>
+		<a
+			href="/design-system/dashboard"
+			class="inline-flex items-center gap-2 rounded-lg border border-border bg-[var(--field-bg)] px-4 py-3 text-sm text-text hover:border-accent transition-colors"
+		>
+			<span class="font-display font-medium">Dashboard Design System →</span>
+		</a>
+	</section>
+
 	<footer class="border-t border-border pt-6 text-sm text-text-secondary">
 		<p>
 			Contract: <code class="font-meta text-extrasmall">docs/DESIGN.md</code> · Tokens:

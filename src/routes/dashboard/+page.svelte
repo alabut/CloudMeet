@@ -1,6 +1,18 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { ProfileSection, CancelBookingModal, HostRescheduleModal, BookingsList, EventTypesList } from '$lib/components/dashboard';
+	import {
+		DashboardPageShell,
+		DashboardHeader,
+		DashboardCard,
+		DashboardNotice,
+		DashboardButton,
+		ProfileSection,
+		CancelBookingModal,
+		HostRescheduleModal,
+		BookingsList,
+		EventTypesList,
+		DashboardNavActions
+	} from '$lib/components/dashboard';
 
 	let { data }: { data: PageData } = $props();
 
@@ -15,6 +27,23 @@
 	// Reschedule booking state
 	let reschedulingBookingId = $state<string | null>(null);
 	let rescheduleSuccess = $state('');
+
+	let copyStatus = $state('');
+	let copyError = $state(false);
+
+	async function copyBookingLink() {
+		copyStatus = '';
+		copyError = false;
+		try {
+			await navigator.clipboard.writeText(data.appUrl + '/');
+			copyStatus = 'Booking link copied to clipboard';
+			setTimeout(() => { copyStatus = ''; }, 3000);
+		} catch {
+			copyError = true;
+			copyStatus = 'Could not copy link. Try selecting the URL manually.';
+			setTimeout(() => { copyStatus = ''; copyError = false; }, 4000);
+		}
+	}
 
 	function openCancelModal(bookingId: string) {
 		cancellingBookingId = bookingId;
@@ -43,7 +72,6 @@
 			throw new Error(errData.message || 'Failed to cancel booking');
 		}
 
-		// Update local reactive state for immediate UI update
 		bookings = bookings.map(b =>
 			b.id === cancellingBookingId
 				? { ...b, status: 'canceled' }
@@ -60,7 +88,6 @@
 		return bookings.find(b => b.id === bookingId) || null;
 	}
 
-	// Reschedule functions
 	function openRescheduleModal(bookingId: string) {
 		reschedulingBookingId = bookingId;
 	}
@@ -86,7 +113,6 @@
 			throw new Error(errData.message || 'Failed to send reschedule proposal');
 		}
 
-		// Update local state - mark as pending reschedule
 		bookings = bookings.map(b =>
 			b.id === bookingId
 				? { ...b, status: 'rescheduled' }
@@ -99,116 +125,84 @@
 	}
 </script>
 
-<div class="min-h-screen bg-gray-50">
-	<!-- Header -->
-	<header class="bg-white shadow-sm">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-			<div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-				<div>
-					<h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
-					<p class="text-sm text-gray-600">Welcome back, {data.user?.name || 'User'}!</p>
-				</div>
-				<div class="flex flex-wrap gap-4">
-					<a
-						href="/dashboard/calendars"
-						class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-					>
-						Calendars
-					</a>
-					<a
-						href="/dashboard/emails"
-						class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-					>
-						Emails
-					</a>
-					<a
-						href="/dashboard/availability"
-						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-					>
-						Set Availability
-					</a>
-					<form method="POST" action="/auth/logout">
-						<button
-							type="submit"
-							class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-						>
-							Logout
-						</button>
-					</form>
-				</div>
-			</div>
-		</div>
-	</header>
+<DashboardPageShell>
+	<DashboardHeader title="Dashboard" subtitle="Welcome back, {data.user?.name || 'User'}!">
+		{#snippet actions()}
+			<DashboardNavActions />
+		{/snippet}
+	</DashboardHeader>
 
-	<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+	<div class="px-4 sm:px-6 py-4 max-w-4xl">
 		{#if data.googleCalendarWarning}
-			<div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">
-				<p class="font-semibold">Google Calendar needs attention</p>
-				<p class="mt-1 text-sm">{data.googleCalendarWarning}</p>
-				<a
-					href="/auth/login"
-					class="mt-3 inline-flex rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700"
-				>
-					Reconnect Google
-				</a>
-			</div>
+			<DashboardNotice variant="attention" class="mb-4">
+				{#snippet heading()}Google Calendar needs attention{/snippet}
+				{data.googleCalendarWarning}
+				<div class="mt-2">
+					<DashboardButton variant="secondary" size="sm" href="/auth/login">
+						Reconnect Google
+					</DashboardButton>
+				</div>
+			</DashboardNotice>
 		{:else if data.googleCalendarOk}
-			<p class="mb-6 text-sm text-green-800">
+			<DashboardNotice variant="success" class="mb-4">
 				Google Calendar is connected. New bookings can create invites.
-			</p>
+			</DashboardNotice>
 		{/if}
 
 		<!-- Profile Section -->
 		<ProfileSection user={data.user} />
 
 		<!-- Booking Link -->
-		<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
-			<h2 class="text-lg font-semibold text-blue-900 mb-2">Your Booking Page</h2>
+		<DashboardCard variant="outlined" class="mb-6">
+			<h2 class="font-display font-medium text-base text-dash-text mb-2">Your Booking Page</h2>
 			<div class="flex flex-col sm:flex-row sm:items-center gap-2">
 				<input
 					type="text"
 					readonly
 					value="{data.appUrl}/"
-					class="flex-1 min-w-0 px-3 py-2 bg-white border border-blue-300 rounded-md"
+					class="flex-1 min-w-0 px-3 py-2 bg-[var(--dash-field)] border border-dash-border rounded-md text-sm text-dash-text"
 				/>
-				<button
-					onclick={() => {
-						navigator.clipboard.writeText(data.appUrl + '/');
-					}}
-					class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition text-sm shrink-0"
+				<DashboardButton
+					variant="primary"
+					size="sm"
+					onclick={copyBookingLink}
+					class="flex-shrink-0"
 				>
 					Copy Link
-				</button>
+				</DashboardButton>
 			</div>
-		</div>
+			{#if copyStatus}
+				<DashboardNotice variant={copyError ? 'danger' : 'success'} live class="mt-2">
+					{copyStatus}
+				</DashboardNotice>
+			{/if}
+		</DashboardCard>
 
 		{#if cancelSuccess || rescheduleSuccess}
-			<div class="bg-green-50 border border-green-200 text-green-800 rounded-lg p-3 text-sm mb-4">
+			<DashboardNotice variant="success" live class="mb-4">
 				{cancelSuccess || rescheduleSuccess}
-			</div>
+			</DashboardNotice>
 		{/if}
 
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 			<!-- Event Types -->
 			<EventTypesList eventTypes={data.eventTypes || []} />
 
 			<!-- Recent Bookings -->
 			<BookingsList {bookings} onCancelClick={openCancelModal} onRescheduleClick={openRescheduleModal} />
 		</div>
-	</main>
-</div>
+	</div>
 
-<!-- Cancel Booking Modal -->
-<CancelBookingModal
-	booking={getBookingById(cancellingBookingId)}
-	show={showCancelModal}
-	onClose={closeCancelModal}
-	onCancel={cancelBooking}
-/>
+	<CancelBookingModal
+		booking={getBookingById(cancellingBookingId)}
+		show={showCancelModal}
+		onClose={closeCancelModal}
+		onCancel={cancelBooking}
+	/>
 
-<!-- Host Reschedule Modal -->
-<HostRescheduleModal
-	booking={getBookingById(reschedulingBookingId)}
-	onClose={closeRescheduleModal}
-	onSubmit={submitRescheduleProposal}
-/>
+	<HostRescheduleModal
+		booking={getBookingById(reschedulingBookingId)}
+		onClose={closeRescheduleModal}
+		onSubmit={submitRescheduleProposal}
+	/>
+</DashboardPageShell>

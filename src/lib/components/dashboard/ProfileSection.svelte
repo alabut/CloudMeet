@@ -1,4 +1,10 @@
 <script lang="ts">
+	import DashboardCard from '$lib/components/dashboard/primitives/DashboardCard.svelte';
+	import DashboardField from '$lib/components/dashboard/primitives/DashboardField.svelte';
+	import DashboardButton from '$lib/components/dashboard/primitives/DashboardButton.svelte';
+	import DashboardNotice from '$lib/components/dashboard/primitives/DashboardNotice.svelte';
+	import DashboardSpinner from '$lib/components/dashboard/primitives/DashboardSpinner.svelte';
+
 	interface Props {
 		user: {
 			name?: string;
@@ -13,7 +19,6 @@
 
 	let { user, onProfileSaved }: Props = $props();
 
-	// Parse user settings
 	function getUserSettings() {
 		try {
 			return user?.settings ? JSON.parse(user.settings) : {};
@@ -22,7 +27,6 @@
 		}
 	}
 
-	// Profile edit state
 	let showProfileEdit = $state(false);
 	let profileName = $state(user?.name || '');
 	let profileImage = $state(user?.profile_image || '');
@@ -34,20 +38,10 @@
 	let profileError = $state('');
 	let profileSuccess = $state('');
 
-	// Preset brand colors
 	const presetColors = [
-		'#3b82f6', // Blue
-		'#8b5cf6', // Purple
-		'#ec4899', // Pink
-		'#ef4444', // Red
-		'#f97316', // Orange
-		'#eab308', // Yellow
-		'#22c55e', // Green
-		'#14b8a6', // Teal
-		'#06b6d4', // Cyan
-		'#6366f1', // Indigo
-		'#000000', // Black
-		'#6b7280'  // Gray
+		'#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#f97316',
+		'#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#6366f1',
+		'#000000', '#6b7280'
 	];
 
 	async function handleImageUpload(e: Event) {
@@ -117,29 +111,25 @@
 	}
 </script>
 
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+<DashboardCard variant="outlined" class="mb-6">
 	<div class="flex items-center justify-between mb-4">
-		<h2 class="text-lg font-semibold text-gray-900">Your Profile</h2>
-		<button
+		<h2 class="font-display font-medium text-base text-dash-text">Your Profile</h2>
+		<DashboardButton
+			variant="ghost"
+			size="sm"
 			onclick={() => showProfileEdit = !showProfileEdit}
-			class="text-sm text-blue-600 hover:text-blue-700"
 		>
 			{showProfileEdit ? 'Cancel' : 'Edit Profile'}
-		</button>
+		</DashboardButton>
 	</div>
 
 	{#if showProfileEdit}
-		<!-- Edit Mode -->
 		<div class="space-y-4">
 			{#if profileError}
-				<div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-3 text-sm">
-					{profileError}
-				</div>
+				<DashboardNotice variant="danger">{profileError}</DashboardNotice>
 			{/if}
 			{#if profileSuccess}
-				<div class="bg-green-50 border border-green-200 text-green-800 rounded-lg p-3 text-sm">
-					{profileSuccess}
-				</div>
+				<DashboardNotice variant="success">{profileSuccess}</DashboardNotice>
 			{/if}
 
 			<div class="flex flex-col sm:flex-row items-start gap-6">
@@ -153,11 +143,11 @@
 								class="w-24 h-24 rounded-full object-cover"
 							/>
 						{:else}
-							<div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-3xl">
+							<div class="w-24 h-24 bg-dash-accent rounded-full flex items-center justify-center text-white font-semibold text-3xl">
 								{profileName?.charAt(0) || 'U'}
 							</div>
 						{/if}
-						<label class="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition">
+						<label class="absolute bottom-0 right-0 bg-dash-surface rounded-full p-2 shadow-lg border border-dash-border cursor-pointer hover:bg-dash-surface-raised transition">
 							<input
 								type="file"
 								accept="image/*"
@@ -166,123 +156,111 @@
 								disabled={uploadingImage}
 							/>
 							{#if uploadingImage}
-								<div class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+								<DashboardSpinner size="sm" />
 							{:else}
-								<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<svg class="w-4 h-4 text-dash-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
 								</svg>
 							{/if}
 						</label>
 					</div>
-					<p class="text-xs text-gray-500 mt-2 text-center">Max 2MB</p>
+					<p class="text-xs text-dash-text-secondary mt-2 text-center">Max 2MB</p>
 				</div>
 
-				<!-- Name Input -->
+				<!-- Name + Contact Email -->
 				<div class="flex-1 min-w-0 w-full space-y-4">
-					<div>
-						<label for="profile-name" class="block text-sm font-medium text-gray-700 mb-2">
-							Display Name
-						</label>
-						<input
-							type="text"
-							id="profile-name"
-							bind:value={profileName}
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-							placeholder="Your name"
-						/>
-						<p class="text-xs text-gray-500 mt-1">This name will be shown on your booking page</p>
-					</div>
-
-					<div>
-						<label for="contact-email" class="block text-sm font-medium text-gray-700 mb-2">
-							Contact Email
-						</label>
-						<input
-							type="email"
-							id="contact-email"
-							bind:value={contactEmail}
-							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-							placeholder="your@business-email.com"
-						/>
-						<p class="text-xs text-gray-500 mt-1">
-							Business email shown in booking emails. Leave empty to use {user?.email}
-						</p>
-					</div>
+					<DashboardField
+						id="profile-name"
+						label="Display Name"
+						bind:value={profileName}
+						placeholder="Your name"
+						hint="This name will be shown on your booking page"
+					/>
+					<DashboardField
+						id="contact-email"
+						label="Contact Email"
+						type="email"
+						bind:value={contactEmail}
+						placeholder="your@business-email.com"
+						hint="Business email shown in booking emails. Leave empty to use {user?.email}"
+					/>
 				</div>
 			</div>
 
 			<!-- Brand Color -->
-			<div class="mt-6">
-				<label class="block text-sm font-medium text-gray-700 mb-3">
-					Brand Color
-				</label>
+			<div class="mt-2">
+				<p id="brand-color-label" class="block text-sm font-medium text-dash-text mb-3">Brand Color</p>
 				<div class="flex items-center gap-4">
-					<div class="flex flex-wrap gap-2">
+					<div class="flex flex-wrap gap-2" role="group" aria-labelledby="brand-color-label">
 						{#each presetColors as color}
 							<button
 								type="button"
 								onclick={() => brandColor = color}
-								class="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 {brandColor === color ? 'ring-2 ring-offset-2 ring-gray-400' : 'border-gray-200'}"
+								class="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 {brandColor === color ? 'ring-2 ring-offset-2 ring-dash-accent ring-offset-dash-bg' : 'border-dash-border'}"
 								style="background-color: {color}"
-								title={color}
+								aria-label="Select brand color {color}"
+								aria-pressed={brandColor === color}
 							></button>
 						{/each}
 					</div>
 					<div class="flex items-center gap-2">
-						<label class="relative cursor-pointer">
+						<label class="relative cursor-pointer" for="brand-color-custom">
+							<span class="sr-only">Custom brand color</span>
 							<input
+								id="brand-color-custom"
 								type="color"
 								bind:value={brandColor}
 								class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+								aria-labelledby="brand-color-label"
 							/>
 							<div
-								class="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-gray-400 transition"
+								class="w-8 h-8 rounded-full border-2 border-dashed border-dash-border flex items-center justify-center hover:border-dash-accent transition"
 								style="background-color: {brandColor}"
 							>
-								<svg class="w-4 h-4 text-white drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<svg class="w-4 h-4 text-white drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
 								</svg>
 							</div>
 						</label>
-						<span class="text-sm text-gray-500 font-mono">{brandColor}</span>
+						<span class="text-sm text-dash-text-secondary font-mono">{brandColor}</span>
 					</div>
 				</div>
-				<p class="text-xs text-gray-500 mt-2">This color will be used on your booking page for buttons and accents</p>
+				<p class="text-xs text-dash-text-secondary mt-2">This color will be used on your booking page for buttons and accents</p>
 			</div>
 
 			<!-- Time Format -->
-			<div class="mt-6">
-				<label class="block text-sm font-medium text-gray-700 mb-3">
-					Time Format
-				</label>
-				<div class="flex gap-3">
+			<div>
+				<p id="time-format-label" class="block text-sm font-medium text-dash-text mb-3">Time Format</p>
+				<div class="flex gap-3" role="group" aria-labelledby="time-format-label">
 					<button
 						type="button"
 						onclick={() => timeFormat = '12h'}
-						class="px-4 py-2 rounded-lg border-2 text-sm font-medium transition {timeFormat === '12h' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:border-gray-400'}"
+						class="px-4 py-2 rounded-lg border-2 text-sm font-medium transition {timeFormat === '12h' ? 'border-dash-accent bg-dash-accent/10 text-dash-accent' : 'border-dash-border text-dash-text-secondary hover:border-dash-accent'}"
+						aria-pressed={timeFormat === '12h'}
 					>
 						12-hour (AM/PM)
 					</button>
 					<button
 						type="button"
 						onclick={() => timeFormat = '24h'}
-						class="px-4 py-2 rounded-lg border-2 text-sm font-medium transition {timeFormat === '24h' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:border-gray-400'}"
+						class="px-4 py-2 rounded-lg border-2 text-sm font-medium transition {timeFormat === '24h' ? 'border-dash-accent bg-dash-accent/10 text-dash-accent' : 'border-dash-border text-dash-text-secondary hover:border-dash-accent'}"
+						aria-pressed={timeFormat === '24h'}
 					>
 						24-hour
 					</button>
 				</div>
-				<p class="text-xs text-gray-500 mt-2">Choose how times are displayed on your booking page</p>
+				<p class="text-xs text-dash-text-secondary mt-2">Choose how times are displayed on your booking page</p>
 			</div>
 
-			<div class="flex justify-end mt-6">
-				<button
+			<div class="flex justify-end mt-2">
+				<DashboardButton
+					variant="primary"
 					onclick={saveProfile}
 					disabled={savingProfile}
-					class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
 				>
-					{savingProfile ? 'Saving...' : 'Save Profile'}
-				</button>
+					{savingProfile ? 'Saving…' : 'Save Profile'}
+				</DashboardButton>
 			</div>
 		</div>
 	{:else}
@@ -292,17 +270,17 @@
 				<img
 					src={user.profile_image}
 					alt="Profile"
-					class="w-16 h-16 rounded-full object-cover"
+					class="w-16 h-16 rounded-full object-cover flex-shrink-0"
 				/>
 			{:else}
-				<div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-2xl">
+				<div class="w-16 h-16 bg-dash-accent rounded-full flex items-center justify-center text-white font-semibold text-2xl flex-shrink-0">
 					{user?.name?.charAt(0) || 'U'}
 				</div>
 			{/if}
-			<div>
-				<p class="font-semibold text-gray-900">{user?.name}</p>
-				<p class="text-sm text-gray-600">{user?.email}</p>
+			<div class="min-w-0">
+				<p class="font-medium text-dash-text">{user?.name}</p>
+				<p class="text-sm text-dash-text-secondary">{user?.email}</p>
 			</div>
 		</div>
 	{/if}
-</div>
+</DashboardCard>

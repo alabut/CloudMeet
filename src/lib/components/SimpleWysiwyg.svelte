@@ -1,10 +1,14 @@
 <script lang="ts">
 	let {
 		value = $bindable(''),
-		placeholder = 'Enter description...'
+		placeholder = 'Enter description...',
+		id,
+		'aria-labelledby': ariaLabelledby
 	}: {
 		value: string;
 		placeholder?: string;
+		id?: string;
+		'aria-labelledby'?: string;
 	} = $props();
 
 	let editor: HTMLDivElement;
@@ -111,7 +115,12 @@
 	<!-- Content editable area -->
 	<div
 		bind:this={editor}
+		{id}
 		contenteditable="true"
+		role="textbox"
+		aria-multiline="true"
+		aria-labelledby={ariaLabelledby}
+		aria-label={ariaLabelledby ? undefined : 'Description'}
 		oninput={updateValue}
 		onpaste={handlePaste}
 		class="min-h-[120px] p-3 outline-none prose prose-sm max-w-none"

@@ -1,4 +1,10 @@
 <script lang="ts">
+	import DashboardSection from '$lib/components/dashboard/primitives/DashboardSection.svelte';
+	import DashboardCard from '$lib/components/dashboard/primitives/DashboardCard.svelte';
+	import DashboardStatusBadge from '$lib/components/dashboard/primitives/DashboardStatusBadge.svelte';
+	import DashboardEmptyState from '$lib/components/dashboard/primitives/DashboardEmptyState.svelte';
+	import DashboardButton from '$lib/components/dashboard/primitives/DashboardButton.svelte';
+
 	interface EventType {
 		id: string;
 		name: string;
@@ -15,65 +21,54 @@
 	let { eventTypes }: Props = $props();
 </script>
 
-<div>
-	<div class="flex justify-between items-center mb-4">
-		<h2 class="text-xl font-bold text-gray-900">Event Types</h2>
-		<a
-			href="/dashboard/event-types/new"
-			class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
-		>
-			+ New Event Type
-		</a>
-	</div>
-
-	<div class="space-y-4">
-		{#if eventTypes && eventTypes.length > 0}
+<DashboardSection heading="Event Types">
+	{#if eventTypes && eventTypes.length > 0}
+		<div class="flex justify-end mb-3">
+			<DashboardButton variant="primary" size="sm" href="/dashboard/event-types/new">
+				+ New Event Type
+			</DashboardButton>
+		</div>
+		<div class="space-y-2">
 			{#each eventTypes as eventType}
-				<div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+				<DashboardCard variant="outlined">
 					<div class="flex flex-wrap justify-between items-start gap-2 mb-2">
 						<div class="min-w-0">
-							<h3 class="font-semibold text-gray-900">{eventType.name}</h3>
-							<p class="text-sm text-gray-600">{eventType.duration} minutes</p>
+							<h3 class="text-sm font-medium text-dash-text">{eventType.name}</h3>
+							<p class="text-xs text-dash-text-secondary">{eventType.duration} minutes</p>
 						</div>
-						<span
-							class="px-2 py-1 text-xs rounded-full {eventType.is_active
-								? 'bg-green-100 text-green-800'
-								: 'bg-gray-100 text-gray-800'}"
-						>
+						<DashboardStatusBadge variant={eventType.is_active ? 'success' : 'neutral'}>
 							{eventType.is_active ? 'Active' : 'Inactive'}
-						</span>
+						</DashboardStatusBadge>
 					</div>
 					{#if eventType.description}
-						<p class="text-sm text-gray-600 mb-3">{eventType.description}</p>
+						<p class="text-sm text-dash-text-secondary mb-3">{eventType.description}</p>
 					{/if}
-					<div class="flex gap-2">
-						<a
-							href="/{eventType.slug}"
-							target="_blank"
-							class="text-sm text-blue-600 hover:text-blue-700"
-						>
+					<div class="flex gap-3">
+						<DashboardButton variant="ghost" size="sm" href="/{eventType.slug}">
 							View Page
-						</a>
-						<span class="text-gray-300">|</span>
-						<a
-							href="/dashboard/event-types/{eventType.id}"
-							class="text-sm text-blue-600 hover:text-blue-700"
-						>
+						</DashboardButton>
+						<DashboardButton variant="ghost" size="sm" href="/dashboard/event-types/{eventType.id}">
 							Edit
-						</a>
+						</DashboardButton>
 					</div>
-				</div>
+				</DashboardCard>
 			{/each}
-		{:else}
-			<div class="bg-white rounded-lg shadow-sm p-8 text-center border border-gray-200">
-				<p class="text-gray-600 mb-4">No event types yet</p>
-				<a
-					href="/dashboard/event-types/new"
-					class="inline-block px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-				>
+		</div>
+	{:else}
+		<DashboardEmptyState
+			title="No event types yet"
+			description="Create your first event type so people can book meetings with you."
+		>
+			{#snippet icon()}
+				<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+				</svg>
+			{/snippet}
+			{#snippet action()}
+				<DashboardButton variant="primary" href="/dashboard/event-types/new">
 					Create Your First Event Type
-				</a>
-			</div>
-		{/if}
-	</div>
-</div>
+				</DashboardButton>
+			{/snippet}
+		</DashboardEmptyState>
+	{/if}
+</DashboardSection>

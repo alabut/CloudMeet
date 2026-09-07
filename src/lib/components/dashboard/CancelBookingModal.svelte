@@ -1,5 +1,9 @@
 <script lang="ts">
 	import { createFormatters } from '$lib/utils/dateFormatters';
+	import DashboardDialog from '$lib/components/dashboard/primitives/DashboardDialog.svelte';
+	import DashboardField from '$lib/components/dashboard/primitives/DashboardField.svelte';
+	import DashboardButton from '$lib/components/dashboard/primitives/DashboardButton.svelte';
+	import DashboardNotice from '$lib/components/dashboard/primitives/DashboardNotice.svelte';
 
 	interface Booking {
 		id: string;
@@ -15,9 +19,11 @@
 		show: boolean;
 		onClose: () => void;
 		onCancel: (message: string) => Promise<void>;
+		inert?: boolean;
+		previewError?: string | null;
 	}
 
-	let { booking, show, onClose, onCancel }: Props = $props();
+	let { booking, show, onClose, onCancel, inert = false, previewError = null }: Props = $props();
 
 	let cancelMessage = $state('');
 	let cancelError = $state('');
@@ -25,8 +31,16 @@
 
 	const { formatCompactDateTime } = createFormatters();
 
+	let open = $state(false);
+
+	$effect(() => {
+		open = show && booking !== null;
+	});
+
 	async function handleCancel() {
 		if (!booking) return;
+
+		if (inert) return;
 
 		cancelling = true;
 		cancelError = '';
@@ -47,53 +61,45 @@
 		cancelError = '';
 		onClose();
 	}
+
+	const displayError = $derived(previewError || cancelError);
 </script>
 
-{#if show && booking}
-	<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-		<div class="bg-white rounded-lg shadow-xl max-w-md w-full">
-			<div class="p-6">
-				<h3 class="text-lg font-semibold text-gray-900 mb-2">Cancel Booking</h3>
-				<p class="text-sm text-gray-600 mb-4">
-					Cancel <strong>{booking.event_type_name}</strong> with <strong>{booking.attendee_name}</strong> on {formatCompactDateTime(new Date(booking.start_time))}?
-				</p>
+<DashboardDialog
+	bind:open
+	title="Cancel Booking"
+	onclose={handleClose}
+>
+	{#if booking}
+		<div class="space-y-4">
+			<p class="text-sm text-dash-text-secondary">
+				Cancel <strong class="text-dash-text">{booking.event_type_name}</strong> with
+				<strong class="text-dash-text">{booking.attendee_name}</strong> on
+				{formatCompactDateTime(new Date(booking.start_time))}?
+			</p>
 
-				{#if cancelError}
-					<div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-3 text-sm mb-4">
-						{cancelError}
-					</div>
-				{/if}
+			{#if displayError}
+				<DashboardNotice variant="danger">{displayError}</DashboardNotice>
+			{/if}
 
-				<div class="mb-4">
-					<label for="cancel-message" class="block text-sm font-medium text-gray-700 mb-1">
-						Message to attendee (optional)
-					</label>
-					<textarea
-						id="cancel-message"
-						bind:value={cancelMessage}
-						placeholder="Let them know why you're cancelling..."
-						rows="3"
-						class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
-					></textarea>
-					<p class="text-xs text-gray-500 mt-1">This message will be included in the cancellation email</p>
-				</div>
+			<DashboardField
+				id="cancel-message"
+				label="Message to attendee (optional)"
+				kind="textarea"
+				bind:value={cancelMessage}
+				placeholder="Let them know why you're cancelling…"
+				rows={3}
+				hint="Your message will be included in the Google Calendar invitation update sent to the attendee."
+			/>
 
-				<div class="flex justify-end gap-3">
-					<button
-						onclick={handleClose}
-						class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
-					>
-						Keep Booking
-					</button>
-					<button
-						onclick={handleCancel}
-						disabled={cancelling}
-						class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition disabled:opacity-50"
-					>
-						{cancelling ? 'Cancelling...' : 'Cancel Booking'}
-					</button>
-				</div>
+			<div class="flex justify-end gap-3 pt-2">
+				<DashboardButton variant="ghost" onclick={handleClose} disabled={cancelling}>
+					Keep Booking
+				</DashboardButton>
+				<DashboardButton variant="danger" onclick={handleCancel} disabled={cancelling || inert}>
+					{cancelling ? 'Cancelling…' : 'Cancel Booking'}
+				</DashboardButton>
 			</div>
 		</div>
-	</div>
-{/if}
+	{/if}
+</DashboardDialog>
