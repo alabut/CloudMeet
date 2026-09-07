@@ -1,0 +1,10 @@
+import { error } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
+import { isLoopbackHost, getAvailabilityFixture } from '$lib/preview/sampleDashboard';
+
+export const load: PageServerLoad = async ({ url }) => {
+	if (!isLoopbackHost(url.hostname)) {
+		throw error(404, 'Not found');
+	}
+	return { fixture: getAvailabilityFixture() };
+};
