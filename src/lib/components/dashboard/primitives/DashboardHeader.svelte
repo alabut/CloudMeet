@@ -15,7 +15,9 @@
 </script>
 
 <header class="border-b border-dash-border bg-dash-surface px-4 sm:px-6 py-4 {className}">
-	<div class="flex items-start justify-between gap-4">
+	<div
+		class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+	>
 		<div class="min-w-0">
 			{#if backHref}
 				<a
@@ -39,13 +41,17 @@
 					{backLabel}
 				</a>
 			{/if}
-			<h1 class="font-display font-medium text-lg sm:text-xl text-dash-text truncate">{title}</h1>
+			<h1 class="font-display font-medium text-lg sm:text-xl text-dash-text sm:truncate">
+				{title}
+			</h1>
 			{#if subtitle}
 				<p class="text-sm text-dash-text-secondary mt-0.5">{subtitle}</p>
 			{/if}
 		</div>
 		{#if actions}
-			<div class="flex flex-wrap items-center justify-end gap-2 flex-shrink-0 max-w-full">
+			<div
+				class="flex flex-wrap items-center justify-start gap-2 w-full sm:w-auto sm:flex-shrink-0 sm:justify-end sm:max-w-full"
+			>
 				{@render actions()}
 			</div>
 		{/if}

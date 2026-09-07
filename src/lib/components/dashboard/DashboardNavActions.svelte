@@ -2,7 +2,7 @@
 	import DashboardButton from '$lib/components/dashboard/primitives/DashboardButton.svelte';
 </script>
 
-<div class="flex flex-wrap items-center justify-end gap-2 max-w-full">
+<div class="flex flex-wrap items-center justify-start sm:justify-end gap-2 max-w-full">
 	<DashboardButton variant="secondary" size="sm" href="/dashboard/calendars">
 		Calendars
 	</DashboardButton>
