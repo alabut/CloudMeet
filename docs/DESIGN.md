@@ -5,7 +5,7 @@ This is the implementation contract for CloudMeet's visitor-facing interface. It
 ## Scope and authority
 
 - Applies to public booking, confirmation, cancellation, rescheduling, reschedule-response, privacy, and public error states.
-- Does not automatically apply to the authenticated dashboard, which remains a separate product surface.
+- The authenticated dashboard is a sibling product surface with its own token layer (`.dashboard-flow`, `--dash-*`) and primitives under `src/lib/components/dashboard/primitives/`. See the dashboard section below and `/design-system/dashboard`.
 - `docs/BREAKPOINT.md` remains authoritative for product and infrastructure boundaries.
 - Preserve working booking behavior, Zoom wording, Google Calendar invitation behavior, and separate mobile/desktop booking markup unless a task explicitly changes them.
 - Before adding page-local styles, inspect the visual catalog and existing primitives. Reuse or extend the smallest appropriate component.
@@ -128,4 +128,30 @@ During iteration, use local previews only. Never create, cancel, or reschedule r
 5. Preserve complete static Tailwind class names.
 6. Change only affected markup trees.
 7. Verify responsive and interaction states locally.
-8. Do not broaden into dashboard or infrastructure work without explicit authorization.
+8. Do not broaden into infrastructure work without explicit authorization.
+
+## Dashboard sibling system
+
+The authenticated management dashboard shares CloudMeet's brand character (dark-first, cream light mode, orange accent) but uses denser task-oriented typography and its own namespaced tokens to avoid colliding with public-flow.
+
+### Tokens
+
+- Applied via `.dashboard-flow` on the outermost wrapper of each dashboard page (`DashboardPageShell`).
+- CSS variables use the `--dash-*` prefix (`--dash-bg`, `--dash-surface`, `--dash-accent`, etc.).
+- Tailwind maps them as `dash-bg`, `dash-surface`, `dash-text`, `dash-accent`, and related utilities in `tailwind.config.js`.
+
+### Primitives
+
+Located under `src/lib/components/dashboard/primitives/` and exported from `$lib/components/dashboard`:
+
+- `DashboardPageShell`, `DashboardHeader`, `DashboardSection`, `DashboardCard`
+- `DashboardButton`, `DashboardField`, `DashboardNotice`, `DashboardStatusBadge`
+- `DashboardEmptyState`, `DashboardIconButton`, `DashboardToggle`, `DashboardDialog`, `DashboardSpinner`
+
+Domain components (`BookingsList`, `EventTypesList`, `ProfileSection`, `CalendarSettings`, modals) compose these primitives. Prefer extending primitives over page-local gray/blue utility stacks.
+
+### Visual QA
+
+- Loopback-only previews live under `/__preview/dashboard/*` with deterministic fixtures in `src/lib/preview/sampleDashboard.ts`.
+- The dashboard catalog is at `/design-system/dashboard` (loopback-only).
+- V1 booking notifications are Google Calendar invitations; do not claim an active transactional email or reminder provider on dashboard copy.

@@ -110,13 +110,43 @@ Non-loopback hosts always 404 for `__preview/*`.
 
 | Surface | URL |
 |---|---|
-| Primitives + BookingSummary | `http://localhost:5173/design-system` |
+| Public primitives + BookingSummary | `http://localhost:5173/design-system` |
+| Dashboard primitives + preview index | `http://localhost:5173/design-system/dashboard` |
+
+---
+
+## Dashboard previews (`/__preview/dashboard/*`)
+
+Loopback-only. Deterministic fixtures from `src/lib/preview/sampleDashboard.ts`. No auth, D1, calendar API, or email calls.
+
+| Surface | State | URL |
+|---|---|---|
+| Overview | Connected | `http://localhost:5173/__preview/dashboard/overview?preview=connected` |
+| Overview | Warning | `http://localhost:5173/__preview/dashboard/overview?preview=warning` |
+| Overview | Empty | `http://localhost:5173/__preview/dashboard/overview?preview=empty` |
+| Overview | Loading | `http://localhost:5173/__preview/dashboard/overview?preview=loading` |
+| Overview | Error | `http://localhost:5173/__preview/dashboard/overview?preview=error` |
+| Event type | New | `http://localhost:5173/__preview/dashboard/event-type?preview=new` |
+| Event type | Edit | `http://localhost:5173/__preview/dashboard/event-type?preview=edit` |
+| Calendars | Connected | `http://localhost:5173/__preview/dashboard/calendars?preview=connected` |
+| Calendars | Disconnected | `http://localhost:5173/__preview/dashboard/calendars?preview=disconnected` |
+| Availability | Default | `http://localhost:5173/__preview/dashboard/availability` |
+| Emails | Default | `http://localhost:5173/__preview/dashboard/emails?preview=default` |
+| Cancel modal | Form | `http://localhost:5173/__preview/dashboard/cancel-modal?preview=form` |
+| Cancel modal | Error | `http://localhost:5173/__preview/dashboard/cancel-modal?preview=error` |
+| Reschedule modal | Form | `http://localhost:5173/__preview/dashboard/reschedule-modal?preview=form` |
+| Reschedule modal | Selected | `http://localhost:5173/__preview/dashboard/reschedule-modal?preview=selected` |
+| Reschedule modal | Loading slots | `http://localhost:5173/__preview/dashboard/reschedule-modal?preview=loading` |
+| Reschedule modal | Empty slots | `http://localhost:5173/__preview/dashboard/reschedule-modal?preview=empty` |
+
+**Viewport notes:** Use 390×844 for overview and modal dialogs; 1440×1000 for event-type edit and design-system catalog; full-page capture for availability and emails.
 
 ---
 
 ## Safety checklist
 
 - [ ] Preview IDs/tokens return 404 on non-loopback hosts
+- [ ] Dashboard preview routes (`/__preview/dashboard/*`, `/design-system/dashboard`) return 404 on non-loopback hosts
 - [ ] Preview form actions do not reach DB/calendar/email
 - [ ] Real booking IDs still use production loaders/actions
 - [ ] No raw 500 messages on public error page

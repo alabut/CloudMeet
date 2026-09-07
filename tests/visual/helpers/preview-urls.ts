@@ -31,6 +31,22 @@ export const previewUrls = {
 	errors: {
 		notFound: '/__preview/error/404',
 		serverError: '/__preview/error/500'
+	},
+	dashboard: {
+		overviewConnected: '/__preview/dashboard/overview?preview=connected',
+		overviewEmpty: '/__preview/dashboard/overview?preview=empty',
+		overviewLoading: '/__preview/dashboard/overview?preview=loading',
+		overviewError: '/__preview/dashboard/overview?preview=error',
+		eventTypeNew: '/__preview/dashboard/event-type?preview=new',
+		eventTypeEdit: '/__preview/dashboard/event-type?preview=edit',
+		calendarsConnected: '/__preview/dashboard/calendars?preview=connected',
+		calendarsDisconnected: '/__preview/dashboard/calendars?preview=disconnected',
+		availability: '/__preview/dashboard/availability',
+		emails: '/__preview/dashboard/emails?preview=default',
+		cancelModal: '/__preview/dashboard/cancel-modal?preview=form',
+		rescheduleModalForm: '/__preview/dashboard/reschedule-modal?preview=form',
+		rescheduleModalSelected: '/__preview/dashboard/reschedule-modal?preview=selected',
+		designSystemCatalog: '/design-system/dashboard'
 	}
 } as const;
 
@@ -54,5 +70,19 @@ export const allPreviewPaths = [
 	previewUrls.rescheduleResponse.alreadyDeclined,
 	previewUrls.privacy,
 	previewUrls.errors.notFound,
-	previewUrls.errors.serverError
+	previewUrls.errors.serverError,
+	previewUrls.dashboard.overviewConnected,
+	previewUrls.dashboard.overviewEmpty,
+	previewUrls.dashboard.overviewLoading,
+	previewUrls.dashboard.overviewError,
+	previewUrls.dashboard.eventTypeNew,
+	previewUrls.dashboard.eventTypeEdit,
+	previewUrls.dashboard.calendarsConnected,
+	previewUrls.dashboard.calendarsDisconnected,
+	previewUrls.dashboard.availability,
+	previewUrls.dashboard.emails,
+	previewUrls.dashboard.cancelModal,
+	previewUrls.dashboard.rescheduleModalForm,
+	previewUrls.dashboard.rescheduleModalSelected,
+	previewUrls.dashboard.designSystemCatalog
 ] as const;

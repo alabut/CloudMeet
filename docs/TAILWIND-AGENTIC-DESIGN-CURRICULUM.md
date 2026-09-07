@@ -15,6 +15,10 @@ The basic rhythm I want to practice is:
 5. Keep one-off layout utilities close to the page instead of inventing a name for everything.
 6. Use ordinary CSS when it is genuinely the clearest tool, not simply because it is familiar.
 
+## Git workflow practice
+
+Keep one task on one feature branch. Before switching branches or starting unrelated work, run `git status` and either commit, stash, or discard dirty changes — do not leave half-finished work silently behind. Commit small checkpoints when a slice is stable enough to roll back to. Open a PR when the branch is ready, merge through review, then delete the branch. Use git worktrees only for genuinely parallel work (e.g. two agents on different features), not for every small task.
+
 The important distinction is that reuse should follow meaning. A reusable `Notice` or `BookingSummary` component establishes behavior, accessibility, and visual defaults. A class called `.gray-box-with-padding` merely gives an arbitrary bundle of CSS a new name.
 
 This project is also practice in agentic engineering. The design system should be easy for both me and an agent to inspect: a short written contract in `docs/DESIGN.md`, a visual catalog at the local `/design-system` page, deterministic preview states, and eventually screenshot tests. The machine-readable material below is intentionally more detailed so future agents can keep the system coherent.
@@ -92,6 +96,14 @@ A cost-conscious first target is 10–20 canonical public route/state screenshot
 8. Visual QA: state matrices, fixtures, Storybook, screenshot baselines, accessibility automation, and real-device checks.
 9. Agentic workflow: expressing design constraints, providing reference states, requiring reuse audits, reviewing diffs, and preventing local style drift.
 10. Capstone: normalize one CloudMeet flow by defining tokens, extracting primitives, migrating three related pages, and adding multi-viewport regression coverage.
+
+### Git workflow notes for agents
+
+- One feature branch per task; inspect `git status` before switching context.
+- Commit checkpoints at stable rollback points; do not amend pushed commits.
+- PR → merge → delete branch is the default completion path.
+- Use worktrees for parallel agents on independent features, not routine single-file edits.
+- Never push, deploy, or touch production secrets unless explicitly authorized.
 
 ## Primary references
 
