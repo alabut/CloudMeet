@@ -17,7 +17,8 @@
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "test:visual:ui": "playwright test --ui",
-    "playwright:install": "playwright install chromium"
+    "playwright:install": "playwright install chromium",
+    "design:lint": "design.md lint docs/DESIGN.md"
   },
   "keywords": [
     "calendly",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260822.1",
+    "@google/design.md": "^0.4.0",
     "@playwright/test": "^1.63.0",
     "@sveltejs/adapter-cloudflare": "^7.2.9",
     "@sveltejs/kit": "^2.70.3",

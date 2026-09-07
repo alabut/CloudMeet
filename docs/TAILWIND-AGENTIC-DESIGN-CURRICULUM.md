@@ -21,7 +21,17 @@ Keep one task on one feature branch. Before switching branches or starting unrel
 
 The important distinction is that reuse should follow meaning. A reusable `Notice` or `BookingSummary` component establishes behavior, accessibility, and visual defaults. A class called `.gray-box-with-padding` merely gives an arbitrary bundle of CSS a new name.
 
-This project is also practice in agentic engineering. The design system should be easy for both me and an agent to inspect: a short written contract in `docs/DESIGN.md`, a visual catalog at the local `/design-system` page, deterministic preview states, and eventually screenshot tests. The machine-readable material below is intentionally more detailed so future agents can keep the system coherent.
+This project is also practice in agentic engineering. The design system should be easy for both me and an agent to inspect: a short written contract in `docs/DESIGN.md` (Google DESIGN.md format with YAML tokens + rationale prose), a visual catalog at the local `/design-system` page, deterministic preview states, and eventually screenshot tests. The machine-readable material below is intentionally more detailed so future agents can keep the system coherent.
+
+**Repo convention:** the canonical design-system document lives at `docs/DESIGN.md`, not a duplicate root `DESIGN.md`.
+
+## Learning log
+
+### 2026-09-07 — Concrete project, real momentum
+
+Working on CloudMeet unlocked the concepts in a way abstract tutorials never did. Tailwind's learning curve turned out smaller than I expected once I paired it with agentic collaboration: agents can absorb the junior designer, engineer, and PM grunt work—inventorying routes, extracting primitives, wiring tokens, running lint—while a patient senior design engineer (human or agent) guides the aesthetic and architectural decisions.
+
+I also realized I already have more senior design-engineering judgment than I credited myself with. I know when something feels off, when to preserve semantics over appearance, and when repetition deserves a component. This is shifting from a vague "skills refresh" toward practicing modern systems, tooling, and collaboration: typed intent and tokens with rationale, closed-loop preview and lint, versioning design changes like code. The experience feels exciting and energizing rather than intimidating.
 
 ## What I should be able to do
 
@@ -34,11 +44,22 @@ This project is also practice in agentic engineering. The design system should b
 - Review an agent's UI diff against an explicit system and visual reference.
 - Extend an existing product without letting every new page invent its own visual language.
 
+## Goals for modern agentic design-system work
+
+These are the capabilities I want to build—not a checklist for every task, but the bar for "good at this":
+
+1. **Typed intent and tokens with rationale** — machine-readable values (YAML front matter in `docs/DESIGN.md`) plus prose that explains *why*, not just *what*. Agents read tokens; humans read judgment.
+2. **Foundations, semantic roles, and components** — raw CSS variables in `src/app.css`, semantic roles (`accent`, `field-bg`, `dash-surface`), then primitives and domain patterns. Three layers, not one flat class list.
+3. **Reusable primitives, not custom CSS that recreates Tailwind** — Svelte components with variants and accessibility contracts; `@apply`-heavy indirection is a smell.
+4. **Interoperability** — tokens that can cross-check against Tailwind config, W3C DTCG JSON, Figma variables, and future tooling without any single export becoming the source of truth.
+5. **Closed-loop quality** — local preview (`/design-system`, loopback fixtures), `npm run design:lint`, accessibility checks, visual regression (Playwright screenshots), and human review before merging.
+6. **Version design changes like code** — commit design-system updates alongside implementation; lint in CI when ready; treat `docs/DESIGN.md` diffs as first-class review material.
+
 ---
 
 # Appendix for agents and future instruction
 
-This appendix is an implementation and teaching reference. Keep the human section above short. Future agents should use this material to guide exercises, reviews, and design-system changes without forcing all of it into every explanation.
+> **Label:** This appendix is an implementation and teaching reference for agents and future sessions. Keep the human sections above short. Use this material to guide exercises, reviews, and design-system changes without forcing all of it into every explanation.
 
 ## Architecture to reinforce
 
@@ -105,7 +126,62 @@ A cost-conscious first target is 10–20 canonical public route/state screenshot
 - Use worktrees for parallel agents on independent features, not routine single-file edits.
 - Never push, deploy, or touch production secrets unless explicitly authorized.
 
+## Research notes — Google DESIGN.md and layered tooling
+
+### Google DESIGN.md format (alpha)
+
+CloudMeet's `docs/DESIGN.md` follows the [Google Labs DESIGN.md](https://github.com/google-labs-code/design.md) specification (`version: alpha`). Structure:
+
+- **YAML front matter** — normative machine-readable tokens: `colors`, `typography`, `rounded`, `spacing`, `components`.
+- **Markdown body** — human rationale in canonical section order: Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts.
+- **Token references** — `{colors.accent}` syntax cross-links component entries to foundation tokens.
+- **Source of truth** — `src/app.css` and `tailwind.config.js` implement values; DESIGN.md documents and lints them. Do **not** treat `design.md export` output as a competing authority.
+
+### Validation commands
+
+```bash
+npm run design:lint          # validates docs/DESIGN.md (pinned @google/design.md CLI)
+npx design.md lint docs/DESIGN.md --format=json   # machine-readable output
+npx design.md spec           # print upstream format spec
+```
+
+The installed CLI version is the validation authority. Re-pin `@google/design.md` deliberately when upgrading.
+
+### Layered state-of-the-art workflow
+
+No single file solves design-system ops. Treat these as **complementary layers**:
+
+| Layer | Role in CloudMeet |
+|-------|-------------------|
+| **DESIGN.md** (`docs/DESIGN.md`) | Agent-readable contract: tokens + rationale; lintable |
+| **CSS variables** (`src/app.css`) | Runtime implementation; dark/light via `prefers-color-scheme` |
+| **Tailwind config** (`tailwind.config.js`) | Utility mapping from CSS vars |
+| **W3C DTCG JSON** | Interchange format for tokens; exportable via `design.md export dtcg` but not canonical here |
+| **Figma variables / MCP / Code Connect** | Design-tool bridge when a Figma library exists; keeps design and code tokens aligned |
+| **Component catalog** (`/design-system`, `/design-system/dashboard`) | Human visual reference and primitive demos |
+| **Visual regression** (Playwright `toHaveScreenshot`) | Executable approval of route/state screenshots |
+| **Accessibility automation + human review** | Closed-loop quality beyond contrast lint warnings |
+
+### Maturity statement (honest)
+
+Google DESIGN.md is **useful and strongly emerging** but the official spec is still **alpha** (`version: alpha` in both the upstream project and CloudMeet's file). Do not claim universal industry adoption. W3C Design Tokens (DTCG), Figma's variable and MCP ecosystem, and component-catalog / visual-regression tooling are mature adjacent layers—not replacements for a written contract agents can read in-repo.
+
+DTCG provides a vendor-neutral JSON token format ([W3C Design Tokens Format Module](https://www.designtokens.org/tr/2025.10/format/)). Figma MCP and Code Connect bridge design files to implementation ([Figma MCP docs](https://developers.figma.com/docs/figma-mcp-server/), [Code Connect docs](https://developers.figma.com/docs/code-connect/)). Use exports and integrations to **cross-check** CloudMeet tokens, not to fork the aesthetic.
+
 ## Primary references
+
+### Design-system format and tooling
+
+- [Google Labs design.md repository and spec](https://github.com/google-labs-code/design.md)
+- [Google DESIGN.md announcement (Google Blog)](https://blog.google/innovation-and-ai/models-and-research/google-labs/stitch-design-md/)
+- [W3C Design Tokens Format Module (DTCG)](https://www.designtokens.org/tr/2025.10/format/)
+
+### Figma design–code bridge
+
+- [Figma MCP server documentation](https://developers.figma.com/docs/figma-mcp-server/)
+- [Figma Code Connect documentation](https://developers.figma.com/docs/code-connect/)
+
+### Tailwind and component architecture
 
 - [Tailwind: managing duplication](https://tailwindcss.com/docs/styling-with-utility-classes#managing-duplication)
 - [Tailwind: adding custom styles](https://tailwindcss.com/docs/adding-custom-styles#adding-component-classes)
