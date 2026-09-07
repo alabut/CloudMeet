@@ -121,3 +121,53 @@ Non-loopback hosts always 404 for `__preview/*`.
 - [ ] Real booking IDs still use production loaders/actions
 - [ ] No raw 500 messages on public error page
 - [ ] Zoom wording preserved on reschedule success
+
+---
+
+## Playwright visual regression suite
+
+Local visual tests run against **http://127.0.0.1:4173** only. They never contact production. The Playwright `webServer` starts (or reuses) the full CloudMeet dev stack via `npm run dev -- --port 4173`, so SvelteKit and local Cloudflare bindings match manual preview.
+
+### Commands
+
+| Command | Purpose |
+|---|---|
+| `npm run test:visual` | Run the full visual + behavior suite against committed snapshot baselines |
+| `npm run test:visual:update` | Regenerate snapshot PNGs after an intentional visual change |
+| `npm run test:visual:ui` | Open Playwright UI mode for debugging a single test or project |
+| `npm run playwright:install` | Install the Chromium browser binary (one-time setup on a new machine) |
+
+Discovery only (no server, no snapshots):
+
+```bash
+npx playwright test --list
+```
+
+### Projects (viewports × themes)
+
+| Project | Viewport | Theme |
+|---|---|---|
+| `phone-dark` | 390×844 | dark |
+| `phone-light` | 390×844 | light |
+| `desktop-dark` | 1440×1000 | dark |
+| `desktop-light` | 1440×1000 | light |
+| `short-laptop-dark` | 1280×720 | dark (centered outcomes only) |
+| `short-laptop-light` | 1280×720 | light (centered outcomes only) |
+
+Snapshot files live next to each spec under `tests/visual/*-snapshots/{projectName}/` and are **tracked in git**.
+
+### Reading test output
+
+When a screenshot comparison runs, Playwright compares three images:
+
+- **Expected** — the committed baseline PNG from the last `test:visual:update` (or initial generation).
+- **Actual** — what Chromium rendered during this run (saved under `test-results/` on failure).
+- **Diff** — a highlighted overlay showing pixel differences between expected and actual (also under `test-results/` on failure).
+
+A passing test means actual matches expected within Playwright’s default pixel tolerance. A failing test prints the paths to actual and diff images; open them side by side, or run `npm run test:visual:ui` to inspect in the Playwright UI. If the new rendering is correct, run `npm run test:visual:update` to accept the new baselines.
+
+On failure, an HTML report is written to `playwright-report/` (opened automatically in the browser when a run fails locally). Traces are retained under `test-results/` for failed tests.
+
+### Manual preview URLs (port 4173)
+
+When running `npm run dev -- --port 4173`, replace `localhost:5173` in the tables above with `127.0.0.1:4173`.
