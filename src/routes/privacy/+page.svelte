@@ -1,3 +1,7 @@
+<script lang="ts">
+	import { PublicPageShell, TextLink } from '$lib/components/public';
+</script>
+
 <svelte:head>
 	<title>Privacy — Schedule with Al Abut</title>
 	<meta
@@ -6,29 +10,34 @@
 	/>
 </svelte:head>
 
-<div class="min-h-screen bg-bg text-text font-serif py-12">
-	<div class="max-w-2xl mx-auto px-gutter prose prose-neutral">
-		<h1 class="font-display text-3xl font-medium mb-6">Privacy</h1>
+<PublicPageShell layout="document" width="booking">
+	<h1 class="font-display text-3xl font-medium text-text mb-6">Privacy</h1>
+	<div class="space-y-5 text-text">
 		<p>
 			This page covers the personal scheduling site at
-			<a href="https://schedule.alabut.com">schedule.alabut.com</a>
+			<TextLink href="https://schedule.alabut.com" class="!inline !px-0 !py-0 text-base">
+				schedule.alabut.com
+			</TextLink>
 			(CloudMeet).
 		</p>
 		<p>
 			When someone books a meeting, we store their name, email, chosen time, and any notes they
 			include, so the host can hold the appointment. If the host has connected Google Calendar, we
 			create a calendar event and send a Google Calendar invitation. That invitation includes the
-			host’s Zoom meeting link.
+			host's Zoom meeting link.
 		</p>
 		<p>
 			The host signs in with Google so the app can read calendar availability and create those
 			invites. We do not sell this information. We do not use it for advertising.
 		</p>
 		<p>
-			Questions: <a href="mailto:alabut@gmail.com">alabut@gmail.com</a>.
+			Questions:
+			<TextLink href="mailto:alabut@gmail.com" class="!inline !px-0 !py-0 text-base">
+				alabut@gmail.com
+			</TextLink>.
 		</p>
 		<p>
-			<a href="/">Back to scheduling</a>
+			<TextLink href="/">Back to scheduling</TextLink>
 		</p>
 	</div>
-</div>
+</PublicPageShell>

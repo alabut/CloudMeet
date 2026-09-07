@@ -6,16 +6,26 @@ import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { cancelCalendarEvent, getValidAccessToken } from '$lib/server/google-calendar';
 import { sendCancellationEmail, sendAdminCancellationNotification, getEmailTemplates, isEmailEnabled } from '$lib/server/email';
-import { getCancelPreviewBooking, isLocalPreviewBooking } from '$lib/preview/sampleBooking';
+import {
+	getCancelPreviewBooking,
+	isLocalPreviewBooking,
+	parseCancelPreviewState
+} from '$lib/preview/sampleBooking';
 
 export const load: PageServerLoad = async ({ params, platform, url }) => {
 	const bookingId = params.id;
 
 	if (isLocalPreviewBooking(bookingId, url.hostname)) {
+		const previewState = parseCancelPreviewState(url.searchParams.get('preview'));
+		if (url.searchParams.get('preview') && !previewState) {
+			throw error(404, 'Not found');
+		}
+
 		return {
 			booking: getCancelPreviewBooking(),
-			alreadyCanceled: false,
-			isPreview: true
+			alreadyCanceled: previewState === 'already-cancelled',
+			isPreview: true,
+			previewState: previewState ?? 'form'
 		};
 	}
 
@@ -56,14 +66,16 @@ export const load: PageServerLoad = async ({ params, platform, url }) => {
 		return {
 			booking,
 			alreadyCanceled: true,
-			isPreview: false
+			isPreview: false,
+			previewState: null
 		};
 	}
 
 	return {
 		booking,
 		alreadyCanceled: false,
-		isPreview: false
+		isPreview: false,
+		previewState: null
 	};
 };
 

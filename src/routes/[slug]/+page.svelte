@@ -10,15 +10,15 @@
 	import BookingIdentity from '$lib/components/BookingIdentity.svelte';
 	import type { MeetingType } from '$lib/meeting';
 	import { meetingShortLabel, meetingTypeForInviteCalendar } from '$lib/meeting';
+	import {
+		PREVIEW_BOOKING_ID,
+		PREVIEW_MEETING_URL,
+		getPreviewSampleSlot,
+		getLocalPreviewSlots,
+		isLoopbackHost
+	} from '$lib/preview/sampleBooking';
 
 	let { data }: { data: PageData } = $props();
-
-	const PREVIEW_BOOKING_ID = 'preview-sample-booking';
-	const PREVIEW_MEETING_URL = 'https://zoom.us/j/12345678901';
-
-	function isLoopbackHost(hostname: string): boolean {
-		return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
-	}
 
 	const isSuccessPreview = $derived(
 		browser &&
@@ -35,30 +35,7 @@
 
 	const isLocalPreview = $derived(isSuccessPreview || isDetailsPreview);
 
-	const previewSample = $derived.by(() => {
-		const start = new Date();
-		start.setDate(start.getDate() + 3);
-		start.setHours(14, 0, 0, 0);
-		const end = new Date(start);
-		end.setMinutes(end.getMinutes() + 30);
-		return {
-			date: formatDateLocal(start),
-			slot: { start: start.toISOString(), end: end.toISOString() }
-		};
-	});
-
-	/** Static slot list for loopback ?preview=details only — never used outside local QA. */
-	function getLocalPreviewSlots(sampleSlot: { start: string; end: string }) {
-		const day = new Date(sampleSlot.start);
-		const durationMs = new Date(sampleSlot.end).getTime() - day.getTime();
-		return [9, 10, 11, 13, 14, 15, 16].map((hour) => {
-			if (hour === 14) return sampleSlot;
-			const start = new Date(day);
-			start.setHours(hour, 0, 0, 0);
-			const end = new Date(start.getTime() + durationMs);
-			return { start: start.toISOString(), end: end.toISOString() };
-		});
-	}
+	const previewSample = $derived(getPreviewSampleSlot());
 
 	// Sanitize event description to prevent XSS (only in browser, SSR uses escaped version)
 	let sanitizedDescription = $state('');

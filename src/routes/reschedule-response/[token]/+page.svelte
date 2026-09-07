@@ -1,12 +1,70 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import type { PageData, ActionData } from './$types';
+	import {
+		PublicPageShell,
+		PublicCard,
+		TextLink,
+		Notice,
+		StatusIcon
+	} from '$lib/components/public';
+	import { BookingSummary } from '$lib/components/booking';
+	import { PREVIEW_BOOKING_ID, PREVIEW_TIMEZONE } from '$lib/preview/sampleBooking';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
+	let accepting = $state(false);
+	let declining = $state(false);
+
 	const success = $derived($page.url.searchParams.get('success'));
 	const action = $derived(data.action);
+	const previewState = $derived(data.previewState);
+
+	const showAccepted = $derived(
+		success === 'accepted' || previewState === 'accepted'
+	);
+	const showDeclined = $derived(
+		success === 'declined' || previewState === 'declined'
+	);
+	const showAlreadyResponded = $derived(
+		data.alreadyResponded && !showAccepted && !showDeclined
+	);
+	const showCounter = $derived(
+		action === 'counter' || previewState === 'counter'
+	);
+	const previewError = $derived(
+		data.isPreview && previewState === 'error'
+			? 'Preview error: response could not be submitted.'
+			: null
+	);
+	const isSubmittingAccept = $derived(
+		accepting || previewState === 'submitting-accept'
+	);
+	const isSubmittingDecline = $derived(
+		declining || previewState === 'submitting-decline'
+	);
+
+	function formatDate(dateStr: string) {
+		const date = new Date(dateStr);
+		return new Intl.DateTimeFormat('en-US', {
+			weekday: 'long',
+			month: 'long',
+			day: 'numeric',
+			timeZone: data.isPreview ? PREVIEW_TIMEZONE : undefined
+		}).format(date);
+	}
+
+	function formatTime(dateStr: string) {
+		const date = new Date(dateStr);
+		return new Intl.DateTimeFormat('en-US', {
+			hour: 'numeric',
+			minute: '2-digit',
+			hour12: true,
+			timeZone: data.isPreview ? PREVIEW_TIMEZONE : undefined
+		}).format(date);
+	}
 
 	function formatDateTime(dateStr: string) {
 		const date = new Date(dateStr);
@@ -17,168 +75,211 @@
 			day: 'numeric',
 			hour: 'numeric',
 			minute: '2-digit',
-			hour12: true
+			hour12: true,
+			timeZone: data.isPreview ? PREVIEW_TIMEZONE : undefined
 		}).format(date);
 	}
 
-	function formatDate(dateStr: string) {
-		const date = new Date(dateStr);
-		return new Intl.DateTimeFormat('en-US', {
-			weekday: 'long',
-			month: 'long',
-			day: 'numeric'
-		}).format(date);
+	function humanizeStatus(status: string | undefined) {
+		if (status === 'accepted') return 'accepted';
+		if (status === 'declined') return 'declined';
+		return status ?? 'responded to';
 	}
 
-	function formatTime(dateStr: string) {
-		const date = new Date(dateStr);
-		return new Intl.DateTimeFormat('en-US', {
-			hour: 'numeric',
-			minute: '2-digit',
-			hour12: true
-		}).format(date);
+	function handlePreviewAccept(e: Event) {
+		e.preventDefault();
+		void goto('?preview=accepted', { replaceState: true, keepFocus: true });
 	}
+
+	function handlePreviewDecline(e: Event) {
+		e.preventDefault();
+		void goto('?preview=declined', { replaceState: true, keepFocus: true });
+	}
+
+	function handleAcceptSubmit() {
+		accepting = true;
+		return async ({ update }: { update: () => Promise<void> }) => {
+			await update();
+			accepting = false;
+		};
+	}
+
+	function handleDeclineSubmit() {
+		declining = true;
+		return async ({ update }: { update: () => Promise<void> }) => {
+			await update();
+			declining = false;
+		};
+	}
+
+	const bookingId = $derived(
+		data.proposal?.booking_id ?? (data.isPreview ? PREVIEW_BOOKING_ID : '')
+	);
 </script>
 
 <svelte:head>
 	<title>Reschedule Response</title>
 </svelte:head>
 
-<div class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center justify-center p-gutter">
-	{#if success === 'accepted'}
-		<!-- Accepted Success -->
-		<div class="bg-surface rounded-large border border-border shadow-lg p-8 max-w-md w-full text-center">
-			<div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style="background-color: var(--bg-secondary)">
-				<svg class="w-10 h-10 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-				</svg>
+{#if showAccepted}
+	<PublicPageShell layout="centered" width="narrow">
+		<PublicCard variant="plain" class="text-center sm:border sm:border-border sm:shadow-lg">
+			<div class="mx-auto mb-4 sm:mb-5 flex justify-center">
+				<StatusIcon variant="success" size="large" />
 			</div>
-			<h1 class="font-display text-2xl font-medium text-text mb-2">Meeting Rescheduled!</h1>
-			<p class="text-text-secondary mb-6">
-				Your meeting has been confirmed for the new time. A calendar update has been sent to your email.
+			<h1 class="font-display text-xl sm:text-2xl font-medium text-text mb-2">Meeting Rescheduled</h1>
+			<p class="mb-6 text-sm text-text-secondary sm:text-base">
+				Your calendar invitation has been updated.
 			</p>
-			<div class="rounded-large p-4 text-left" style="background-color: var(--bg-secondary)">
+			<BookingSummary class="text-left">
 				<p class="font-semibold text-text mb-2">{data.proposal?.event_name}</p>
-				<p class="text-sm text-text-secondary">{formatDateTime(data.proposal?.proposed_start_time || '')}</p>
+				<p class="text-sm text-text-secondary">
+					{formatDateTime(data.proposal?.proposed_start_time || '')}
+				</p>
+			</BookingSummary>
+		</PublicCard>
+	</PublicPageShell>
+{:else if showDeclined}
+	<PublicPageShell layout="centered" width="narrow">
+		<PublicCard variant="plain" class="text-center sm:border sm:border-border sm:shadow-lg">
+			<div class="mx-auto mb-4 sm:mb-5 flex justify-center">
+				<StatusIcon variant="danger" size="large" />
 			</div>
-		</div>
-	{:else if success === 'declined'}
-		<!-- Declined Success -->
-		<div class="bg-surface rounded-large border border-border shadow-lg p-8 max-w-md w-full text-center">
-			<div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/30" style="background-color: rgba(239, 68, 68, 0.1)">
-				<svg class="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-				</svg>
-			</div>
-			<h1 class="font-display text-2xl font-medium text-text mb-2">Meeting Cancelled</h1>
-			<p class="text-text-secondary mb-6">
+			<h1 class="font-display text-xl sm:text-2xl font-medium text-text mb-2">Meeting Cancelled</h1>
+			<p class="mb-6 text-sm text-text-secondary sm:text-base">
 				The meeting has been cancelled. The host has been notified.
 			</p>
-			<a
-				href="/{data.proposal?.event_slug}"
-				class="inline-block px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-large transition"
-			>
-				Book a New Time
-			</a>
-		</div>
-	{:else if data.alreadyResponded}
-		<!-- Already Responded -->
-		<div class="bg-surface rounded-large border border-border shadow-lg p-8 max-w-md w-full text-center">
-			<div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-yellow-500/30" style="background-color: rgba(234, 179, 8, 0.1)">
-				<svg class="w-10 h-10 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-				</svg>
+			<TextLink href="/{data.proposal?.event_slug}">Book a New Time</TextLink>
+		</PublicCard>
+	</PublicPageShell>
+{:else if showAlreadyResponded}
+	<PublicPageShell layout="centered" width="narrow">
+		<PublicCard variant="plain" class="text-center sm:border sm:border-border sm:shadow-lg">
+			<div class="mx-auto mb-4 sm:mb-5 flex justify-center">
+				<StatusIcon variant="attention" size="large" />
 			</div>
-			<h1 class="font-display text-2xl font-medium text-text mb-2">Already Responded</h1>
-			<p class="text-text-secondary">
-				This reschedule request has already been {data.proposal?.status}.
+			<h1 class="font-display text-xl sm:text-2xl font-medium text-text mb-2">Already Responded</h1>
+			<p class="text-sm text-text-secondary sm:text-base">
+				You have already {humanizeStatus(data.proposal?.status)} this reschedule request.
 			</p>
-		</div>
-	{:else if action === 'counter'}
-		<!-- Counter Propose - Redirect to reschedule page -->
-		<div class="bg-surface rounded-large border border-border shadow-lg p-8 max-w-md w-full text-center">
-			<h1 class="font-display text-2xl font-medium text-text mb-4">Propose Different Time</h1>
-			<p class="text-text-secondary mb-6">
-				You'll be redirected to choose a different time for your meeting.
+		</PublicCard>
+	</PublicPageShell>
+{:else if showCounter}
+	<PublicPageShell layout="centered" width="narrow">
+		<PublicCard variant="raised" class="text-center">
+			<h1 class="font-display text-xl sm:text-2xl font-medium text-text mb-4">
+				Propose Different Time
+			</h1>
+			<p class="text-sm text-text-secondary sm:text-base mb-6">
+				Choose a different time for your meeting.
 			</p>
 			<a
-				href="/reschedule/{data.proposal?.booking_id}"
-				class="inline-block px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-large transition"
+				href="/reschedule/{bookingId}"
+				class="inline-block rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
 			>
 				Choose Different Time
 			</a>
-		</div>
-	{:else}
-		<!-- Response Form -->
-		<div class="bg-surface rounded-large border border-border shadow-lg p-8 max-w-lg w-full">
-			<h1 class="font-display text-2xl font-medium text-text mb-2 text-center">Reschedule Request</h1>
+		</PublicCard>
+	</PublicPageShell>
+{:else}
+	<PublicPageShell layout="document" width="booking">
+		<PublicCard variant="raised">
+			<h1 class="font-display text-2xl font-medium text-text mb-2 text-center">
+				Reschedule Request
+			</h1>
 			<p class="text-text-secondary mb-6 text-center">
-				<strong class="text-text">{data.proposal?.host_name}</strong> would like to reschedule your meeting.
+				<strong class="text-text">{data.proposal?.host_name}</strong> would like to reschedule your
+				meeting.
 			</p>
 
-			{#if form?.error}
-				<div class="bg-red-500/10 border border-red-500/30 text-red-400 rounded-large p-4 mb-6">
-					{form.error}
-				</div>
+			{#if form?.error || previewError}
+				<Notice variant="danger" class="mb-6">
+					{#snippet heading()}Error{/snippet}
+					{form?.error ?? previewError}
+				</Notice>
 			{/if}
 
 			{#if data.proposal?.message}
-				<div class="rounded-large p-4 mb-6 border border-accent/30" style="background-color: color-mix(in srgb, var(--accent) 10%, transparent)">
-					<p class="text-sm text-text">{data.proposal.message}</p>
-				</div>
+				<Notice variant="info" class="mb-6">
+					{#snippet heading()}Message from host{/snippet}
+					{data.proposal.message}
+				</Notice>
 			{/if}
 
 			<div class="space-y-4 mb-6">
-				<!-- Original Time -->
-				<div class="rounded-large p-4 border border-red-500/30" style="background-color: rgba(239, 68, 68, 0.1)">
-					<div class="font-meta text-extrasmall uppercase tracking-wide text-red-400 mb-2">Original Time</div>
+				<BookingSummary title="Original time">
 					<div class="text-text line-through">
 						<p class="font-medium">{formatDate(data.proposal?.original_start_time || '')}</p>
-						<p class="text-sm">{formatTime(data.proposal?.original_start_time || '')} - {formatTime(data.proposal?.original_end_time || '')}</p>
+						<p class="text-sm">
+							{formatTime(data.proposal?.original_start_time || '')} -
+							{formatTime(data.proposal?.original_end_time || '')}
+						</p>
 					</div>
-				</div>
+				</BookingSummary>
 
-				<!-- Proposed New Time -->
-				<div class="rounded-large p-4 border border-accent/30" style="background-color: color-mix(in srgb, var(--accent) 10%, transparent)">
-					<div class="font-meta text-extrasmall uppercase tracking-wide text-accent mb-2">Proposed New Time</div>
+				<div class="rounded-lg border border-accent/30 bg-accent/10 p-4 sm:p-6">
+					<p class="font-meta text-extrasmall uppercase tracking-wide text-accent mb-2">
+						Proposed new time
+					</p>
 					<div class="text-text">
 						<p class="font-medium">{formatDate(data.proposal?.proposed_start_time || '')}</p>
-						<p class="text-sm">{formatTime(data.proposal?.proposed_start_time || '')} - {formatTime(data.proposal?.proposed_end_time || '')}</p>
+						<p class="text-sm">
+							{formatTime(data.proposal?.proposed_start_time || '')} -
+							{formatTime(data.proposal?.proposed_end_time || '')}
+						</p>
 					</div>
 				</div>
 			</div>
 
-			<div class="rounded-large p-4 mb-6" style="background-color: var(--bg-secondary)">
-				<p class="text-sm"><span class="text-text-secondary">Meeting:</span> <span class="font-medium text-text">{data.proposal?.event_name}</span></p>
-				<p class="text-sm"><span class="text-text-secondary">With:</span> <span class="font-medium text-text">{data.proposal?.host_name}</span></p>
-			</div>
+			<BookingSummary class="mb-6">
+				<p class="text-sm">
+					<span class="text-text-secondary">Meeting:</span>
+					<span class="font-medium text-text">{data.proposal?.event_name}</span>
+				</p>
+				<p class="text-sm mt-1">
+					<span class="text-text-secondary">With:</span>
+					<span class="font-medium text-text">{data.proposal?.host_name}</span>
+				</p>
+			</BookingSummary>
 
 			<div class="space-y-3">
-				<form method="POST" action="?/accept" use:enhance>
+				<form
+					method="POST"
+					action="?/accept"
+					use:enhance={data.isPreview ? undefined : handleAcceptSubmit}
+					onsubmit={data.isPreview ? handlePreviewAccept : undefined}
+				>
 					<button
 						type="submit"
-						class="w-full px-6 py-3 text-white rounded-large font-medium transition bg-green-600 hover:bg-green-700"
+						disabled={isSubmittingAccept || isSubmittingDecline}
+						class="w-full px-6 py-3 text-white rounded-large font-medium transition bg-accent hover:bg-accent-hover disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
 					>
-						Accept New Time
+						{isSubmittingAccept ? 'Accepting...' : 'Accept New Time'}
 					</button>
 				</form>
 
-				<form method="POST" action="?/decline" use:enhance>
+				<form
+					method="POST"
+					action="?/decline"
+					use:enhance={data.isPreview ? undefined : handleDeclineSubmit}
+					onsubmit={data.isPreview ? handlePreviewDecline : undefined}
+				>
 					<button
 						type="submit"
-						class="w-full px-6 py-3 text-white rounded-large font-medium transition bg-red-600 hover:bg-red-700"
+						disabled={isSubmittingAccept || isSubmittingDecline}
+						class="w-full px-6 py-3 text-white rounded-large font-medium transition bg-red-600 hover:bg-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
 					>
-						Decline & Cancel Meeting
+						{isSubmittingDecline ? 'Declining...' : 'Decline & Cancel Meeting'}
 					</button>
 				</form>
 
 				<a
-					href="/reschedule/{data.proposal?.booking_id}"
+					href="/reschedule/{bookingId}"
 					class="block w-full px-6 py-3 text-center rounded-large font-medium transition border-2 border-accent text-accent hover:bg-accent/10"
 				>
 					Propose Different Time
 				</a>
 			</div>
-		</div>
-	{/if}
-</div>
+		</PublicCard>
+	</PublicPageShell>
+{/if}

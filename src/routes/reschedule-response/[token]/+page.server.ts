@@ -10,15 +10,46 @@ import { sendAdminRescheduleNotification, sendAdminCancellationNotification } fr
 import { buildCalendarEventDescription } from '$lib/server/calendar-event-description';
 import { getConfiguredZoomMeetingUrl } from '$lib/server/zoom';
 import { meetingJoinLabel } from '$lib/meeting';
+import {
+	getProposalPreviewRecord,
+	isLocalPreviewProposal,
+	parseProposalPreviewState
+} from '$lib/preview/sampleBooking';
 
 export const load: PageServerLoad = async ({ params, url, platform }) => {
+	const token = params.token;
+	const action = url.searchParams.get('action');
+
+	if (isLocalPreviewProposal(token, url.hostname)) {
+		const previewState = parseProposalPreviewState(url.searchParams.get('preview'));
+		if (url.searchParams.get('preview') && !previewState) {
+			throw error(404, 'Not found');
+		}
+
+		const state = previewState ?? 'pending';
+		const proposal = getProposalPreviewRecord(
+			state,
+			state !== 'pending-no-message'
+		);
+
+		const alreadyResponded =
+			state === 'already-accepted' ||
+			state === 'already-declined' ||
+			proposal.status !== 'pending';
+
+		return {
+			proposal,
+			alreadyResponded,
+			action: state === 'counter' ? 'counter' : action,
+			isPreview: true,
+			previewState: state
+		};
+	}
+
 	const db = platform?.env?.DB;
 	if (!db) {
 		throw error(500, 'Database not available');
 	}
-
-	const token = params.token;
-	const action = url.searchParams.get('action');
 
 	// Get the proposal
 	const proposal = await db
@@ -67,26 +98,34 @@ export const load: PageServerLoad = async ({ params, url, platform }) => {
 		return {
 			proposal,
 			alreadyResponded: true,
-			action
+			action,
+			isPreview: false,
+			previewState: null
 		};
 	}
 
 	return {
 		proposal,
 		alreadyResponded: false,
-		action
+		action,
+		isPreview: false,
+		previewState: null
 	};
 };
 
 export const actions: Actions = {
-	accept: async ({ params, platform }) => {
+	accept: async ({ params, platform, url }) => {
+		const token = params.token;
+
+		if (isLocalPreviewProposal(token, url.hostname)) {
+			return fail(400, { error: 'Preview mode cannot accept proposals' });
+		}
+
 		const db = platform?.env?.DB;
 		const env = platform?.env;
 		if (!db || !env) {
 			return fail(500, { error: 'Database not available' });
 		}
-
-		const token = params.token;
 
 		try {
 			// Get proposal details
@@ -181,9 +220,7 @@ export const actions: Actions = {
 						dateTime: new Date(proposal.proposed_end_time).toISOString(),
 						timeZone: 'UTC'
 					},
-					attendees: [
-						{ email: proposal.attendee_email }
-					]
+					attendees: [{ email: proposal.attendee_email }]
 				});
 
 				newGoogleEventId = calendarEvent.id;
@@ -213,14 +250,15 @@ export const actions: Actions = {
 
 			// Update proposal status
 			await db
-				.prepare(`UPDATE reschedule_proposals SET status = 'accepted', responded_at = CURRENT_TIMESTAMP WHERE id = ?`)
+				.prepare(
+					`UPDATE reschedule_proposals SET status = 'accepted', responded_at = CURRENT_TIMESTAMP WHERE id = ?`
+				)
 				.bind(proposal.id)
 				.run();
 
 			// Send admin notification about accepted reschedule
 			if (env.EMAILIT_API_KEY) {
 				try {
-					// Parse user settings for time format
 					let timeFormat: '12h' | '24h' = '12h';
 					try {
 						const settings = proposal.settings ? JSON.parse(proposal.settings) : {};
@@ -261,24 +299,29 @@ export const actions: Actions = {
 			}
 
 			throw redirect(303, `/reschedule-response/${token}?success=accepted`);
-		} catch (err: any) {
-			if (err?.status === 303 || err?.status === 500) throw err;
+		} catch (err: unknown) {
+			if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 303) {
+				throw err;
+			}
 			console.error('Accept proposal error:', err);
 			return fail(500, { error: 'Failed to accept proposal' });
 		}
 	},
 
-	decline: async ({ params, platform }) => {
+	decline: async ({ params, platform, url }) => {
+		const token = params.token;
+
+		if (isLocalPreviewProposal(token, url.hostname)) {
+			return fail(400, { error: 'Preview mode cannot decline proposals' });
+		}
+
 		const db = platform?.env?.DB;
 		const env = platform?.env;
 		if (!db || !env) {
 			return fail(500, { error: 'Database not available' });
 		}
 
-		const token = params.token;
-
 		try {
-			// Get proposal with full details for notification
 			const proposal = await db
 				.prepare(
 					`SELECT p.id, p.booking_id, p.status, p.proposed_start_time, p.proposed_end_time,
@@ -318,7 +361,6 @@ export const actions: Actions = {
 				return fail(400, { error: 'Proposal already responded to or expired' });
 			}
 
-			// Cancel Google Calendar event if exists
 			if (proposal.google_event_id) {
 				try {
 					const accessToken = await getValidAccessToken(
@@ -333,22 +375,22 @@ export const actions: Actions = {
 				}
 			}
 
-			// Update booking as cancelled
 			await db
-				.prepare(`UPDATE bookings SET status = 'canceled', canceled_at = CURRENT_TIMESTAMP, canceled_by = 'attendee' WHERE id = ?`)
+				.prepare(
+					`UPDATE bookings SET status = 'canceled', canceled_at = CURRENT_TIMESTAMP, canceled_by = 'attendee' WHERE id = ?`
+				)
 				.bind(proposal.booking_id)
 				.run();
 
-			// Update proposal status
 			await db
-				.prepare(`UPDATE reschedule_proposals SET status = 'declined', responded_at = CURRENT_TIMESTAMP WHERE id = ?`)
+				.prepare(
+					`UPDATE reschedule_proposals SET status = 'declined', responded_at = CURRENT_TIMESTAMP WHERE id = ?`
+				)
 				.bind(proposal.id)
 				.run();
 
-			// Send admin notification about declined reschedule (meeting cancelled)
 			if (env.EMAILIT_API_KEY) {
 				try {
-					// Parse user settings for time format
 					let timeFormat: '12h' | '24h' = '12h';
 					try {
 						const settings = proposal.settings ? JSON.parse(proposal.settings) : {};
@@ -373,7 +415,8 @@ export const actions: Actions = {
 							timeFormat,
 							brandColor: proposal.brand_color || '#3b82f6',
 							attendeeNotes: proposal.attendee_notes,
-							customMessage: 'Attendee declined the reschedule proposal and cancelled the meeting.'
+							customMessage:
+								'Attendee declined the reschedule proposal and cancelled the meeting.'
 						},
 						proposal.host_email,
 						{
@@ -387,8 +430,10 @@ export const actions: Actions = {
 			}
 
 			throw redirect(303, `/reschedule-response/${token}?success=declined`);
-		} catch (err: any) {
-			if (err?.status === 303) throw err;
+		} catch (err: unknown) {
+			if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 303) {
+				throw err;
+			}
 			console.error('Decline proposal error:', err);
 			return fail(500, { error: 'Failed to decline proposal' });
 		}

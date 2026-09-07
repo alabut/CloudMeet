@@ -4,17 +4,27 @@
 
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getReschedulePreviewBooking, isLocalPreviewBooking } from '$lib/preview/sampleBooking';
+import {
+	getReschedulePreviewBooking,
+	isLocalPreviewBooking,
+	parseReschedulePreviewState
+} from '$lib/preview/sampleBooking';
 
 export const load: PageServerLoad = async ({ params, platform, url }) => {
 	const bookingId = params.id;
 
 	if (isLocalPreviewBooking(bookingId, url.hostname)) {
+		const previewState = parseReschedulePreviewState(url.searchParams.get('preview'));
+		if (url.searchParams.get('preview') && !previewState) {
+			throw error(404, 'Not found');
+		}
+
 		return {
 			booking: getReschedulePreviewBooking(),
 			timeFormat: '12h' as const,
 			appUrl: '',
-			isPreview: true
+			isPreview: true,
+			previewState: previewState ?? 'form'
 		};
 	}
 
@@ -95,6 +105,7 @@ export const load: PageServerLoad = async ({ params, platform, url }) => {
 		},
 		timeFormat,
 		appUrl: env.APP_URL || '',
-		isPreview: false
+		isPreview: false,
+		previewState: null
 	};
 };

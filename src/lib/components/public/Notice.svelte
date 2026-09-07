@@ -7,9 +7,10 @@
 		variant?: Variant;
 		heading?: Snippet;
 		children?: Snippet;
+		class?: string;
 	}
 
-	let { variant = 'info', heading, children }: Props = $props();
+	let { variant = 'info', heading, children, class: className = '' }: Props = $props();
 
 	const variantClasses: Record<Variant, string> = {
 		info: 'bg-[var(--field-bg)] border-border text-text',
@@ -20,7 +21,7 @@
 </script>
 
 <div
-	class="rounded-large border p-4 {variantClasses[variant]}"
+	class="rounded-large border p-4 {variantClasses[variant]} {className}"
 	role={variant === 'danger' ? 'alert' : 'status'}
 >
 	{#if heading}

@@ -11,9 +11,10 @@
 		Notice,
 		StatusIcon
 	} from '$lib/components/public';
-	import { BookingSuccess } from '$lib/components/booking';
+	import { BookingSuccess, BookingSummary } from '$lib/components/booking';
 	import {
 		PREVIEW_BOOKING_ID,
+		PREVIEW_PROPOSAL_TOKEN,
 		PREVIEW_MEETING_URL,
 		getPreviewSampleSlot
 	} from '$lib/preview/sampleBooking';
@@ -334,31 +335,62 @@
 
 	<!-- Booking summary example -->
 	<section class="mb-12">
-		<h2 class="font-display text-xl font-medium text-text mb-4">Booking summary</h2>
+		<h2 class="font-display text-xl font-medium text-text mb-4">BookingSummary pattern</h2>
 		<p class="text-sm text-text-secondary mb-4">
-			Representative detail panel — the bordered inner card used in confirmation and management flows.
+			Neutral detail surface for booking metadata in management flows (cancel, reschedule, proposals).
 		</p>
-		<div class="max-w-md rounded-lg border border-border bg-[var(--field-bg)] p-6 text-left">
-			<h3 class="mb-4 font-semibold text-text">30-minute conversation</h3>
-			<div class="space-y-4 text-sm">
-				<div class="flex items-start gap-3">
-					<svg class="w-5 h-5 text-text-secondary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-					</svg>
-					<div>
-						<p class="text-text">{formatTimeRange(sample.slot.start, sample.slot.end)}</p>
-						<p class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mt-1">
-							{formatSelectedDate(sample.date)}
-						</p>
+		<div class="max-w-md">
+			<BookingSummary title="Booking Details">
+				<div class="space-y-4 text-sm">
+					<div class="flex items-start gap-3">
+						<svg class="w-5 h-5 text-text-secondary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+						</svg>
+						<div>
+							<p class="text-text">{formatTimeRange(sample.slot.start, sample.slot.end)}</p>
+							<p class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mt-1">
+								{formatSelectedDate(sample.date)}
+							</p>
+						</div>
+					</div>
+					<div class="flex items-center gap-3">
+						<svg class="w-5 h-5 text-text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+						</svg>
+						<p class="text-text">Preview Attendee</p>
 					</div>
 				</div>
-				<div class="flex items-center gap-3">
-					<svg class="w-5 h-5 text-text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-					</svg>
-					<p class="text-text">Preview Attendee</p>
-				</div>
-			</div>
+			</BookingSummary>
+		</div>
+	</section>
+
+	<!-- Edge-state preview URLs -->
+	<section class="mb-12">
+		<h2 class="font-display text-xl font-medium text-text mb-4">Edge-state previews</h2>
+		<p class="text-sm text-text-secondary mb-4">
+			Deterministic loopback-only URLs. Full matrix:
+			<code class="font-meta text-extrasmall">docs/VISUAL-QA-MATRIX.md</code>
+		</p>
+		<div class="space-y-2 text-sm text-text-secondary">
+			<p>
+				<span class="font-meta text-extrasmall uppercase tracking-wide text-text">Cancel</span> —
+				<TextLink href="/cancel/{PREVIEW_BOOKING_ID}" class="!inline !px-1 !py-0">form</TextLink>,
+				<TextLink href="/cancel/{PREVIEW_BOOKING_ID}?preview=success" class="!inline !px-1 !py-0">success</TextLink>
+			</p>
+			<p>
+				<span class="font-meta text-extrasmall uppercase tracking-wide text-text">Reschedule</span> —
+				<TextLink href="/reschedule/{PREVIEW_BOOKING_ID}" class="!inline !px-1 !py-0">form</TextLink>,
+				<TextLink href="/reschedule/{PREVIEW_BOOKING_ID}?preview=success" class="!inline !px-1 !py-0">success</TextLink>
+			</p>
+			<p>
+				<span class="font-meta text-extrasmall uppercase tracking-wide text-text">Proposal</span> —
+				<TextLink href="/reschedule-response/{PREVIEW_PROPOSAL_TOKEN}" class="!inline !px-1 !py-0">pending</TextLink>,
+				<TextLink href="/reschedule-response/{PREVIEW_PROPOSAL_TOKEN}?preview=accepted" class="!inline !px-1 !py-0">accepted</TextLink>
+			</p>
+			<p>
+				<span class="font-meta text-extrasmall uppercase tracking-wide text-text">Error</span> —
+				<TextLink href="/__preview/error/404" class="!inline !px-1 !py-0">404</TextLink>
+			</p>
 		</div>
 	</section>
 
