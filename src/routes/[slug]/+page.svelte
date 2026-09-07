@@ -395,7 +395,7 @@
 >
 	{#if bookingStatus === 'success' || isSuccessPreview}
 		<!-- Success Screen -->
-		<div class="flex min-h-screen w-full items-start justify-center px-2 py-8 md:items-center md:px-gutter md:py-12">
+		<div class="flex min-h-screen w-full items-center justify-center px-2 py-8 md:px-gutter md:py-12">
 			<BookingSuccess
 				eventName={displayEventName}
 				selectedDate={isSuccessPreview ? previewSample.date : (selectedDate ?? '')}

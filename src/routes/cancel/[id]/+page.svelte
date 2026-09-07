@@ -1,13 +1,20 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let cancelling = $state(false);
+	let previewCancelled = $state(false);
 	let reason = $state('');
 	const success = $derived($page.url.searchParams.get('success') === 'true');
+	const previewSuccess = $derived(
+		data.isPreview &&
+			($page.url.searchParams.get('preview') === 'success' || previewCancelled)
+	);
+	const showSuccess = $derived(success || data.alreadyCanceled || previewSuccess);
 
 	function formatDateTime(dateStr: string) {
 		const date = new Date(dateStr);
@@ -29,39 +36,51 @@
 			cancelling = false;
 		};
 	}
+
+	function handlePreviewCancel(e: Event) {
+		e.preventDefault();
+		previewCancelled = true;
+		void goto('?preview=success', { replaceState: true, keepFocus: true });
+	}
 </script>
 
 <svelte:head>
 	<title>Cancel Booking</title>
 </svelte:head>
 
-<div class="public-flow min-h-screen bg-bg text-text font-serif py-12">
-	<div class="max-w-2xl mx-auto px-gutter">
-		{#if success || data.alreadyCanceled}
-			<!-- Success Message -->
-			<div class="bg-surface rounded-large border border-border shadow-lg p-8 text-center">
-				<div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background-color: var(--bg-secondary)">
-					<svg class="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div
+	class="public-flow min-h-screen bg-bg text-text font-serif {showSuccess
+		? 'flex flex-col items-center justify-center p-gutter'
+		: 'py-12'}"
+>
+	{#if showSuccess}
+		<!-- Success Message -->
+		<div class="bg-bg p-6 sm:border sm:border-border sm:rounded-large sm:shadow-lg sm:p-8 max-w-md w-[calc(100%-1rem)] sm:w-full mx-2">
+			<div class="text-center">
+				<div class="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-accent bg-transparent sm:mb-5 sm:h-28 sm:w-28">
+					<svg class="h-16 w-16 text-accent sm:h-20 sm:w-20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
-							stroke-width="2"
+							stroke-width="3"
 							d="M5 13l4 4L19 7"
 						></path>
 					</svg>
 				</div>
-				<h1 class="font-display text-2xl font-medium text-text mb-2">Booking Cancelled</h1>
-				<p class="text-text-secondary mb-6">
+				<h1 class="font-display text-xl sm:text-2xl font-medium text-text mb-2">Booking Cancelled</h1>
+				<p class="mb-6 text-sm text-text-secondary sm:mb-6 sm:text-base">
 					Your meeting has been cancelled successfully. The host has been notified.
 				</p>
 				<a
 					href="/{data.booking.event_slug}"
-					class="inline-block px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-large transition"
+					class="inline-block py-2.5 px-2 text-sm link-underline text-accent transition"
 				>
 					Book Another Meeting
 				</a>
 			</div>
-		{:else}
+		</div>
+	{:else}
+		<div class="max-w-2xl mx-auto px-gutter">
 			<!-- Cancellation Form -->
 			<div class="bg-surface rounded-large border border-border shadow-lg p-8">
 				<h1 class="font-display text-2xl font-medium text-text mb-6">Cancel Booking</h1>
@@ -116,7 +135,11 @@
 					</p>
 				</div>
 
-				<form method="POST" use:enhance={handleSubmit}>
+				<form
+					method="POST"
+					use:enhance={data.isPreview ? undefined : handleSubmit}
+					onsubmit={data.isPreview ? handlePreviewCancel : undefined}
+				>
 					<input type="hidden" name="reason" value={reason} />
 					<div class="flex gap-4">
 						<button
@@ -135,6 +158,6 @@
 					</div>
 				</form>
 			</div>
-		{/if}
-	</div>
+		</div>
+	{/if}
 </div>

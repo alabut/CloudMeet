@@ -6,14 +6,23 @@ import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { cancelCalendarEvent, getValidAccessToken } from '$lib/server/google-calendar';
 import { sendCancellationEmail, sendAdminCancellationNotification, getEmailTemplates, isEmailEnabled } from '$lib/server/email';
+import { getCancelPreviewBooking, isLocalPreviewBooking } from '$lib/preview/sampleBooking';
 
-export const load: PageServerLoad = async ({ params, platform }) => {
+export const load: PageServerLoad = async ({ params, platform, url }) => {
+	const bookingId = params.id;
+
+	if (isLocalPreviewBooking(bookingId, url.hostname)) {
+		return {
+			booking: getCancelPreviewBooking(),
+			alreadyCanceled: false,
+			isPreview: true
+		};
+	}
+
 	const db = platform?.env?.DB;
 	if (!db) {
 		throw error(500, 'Database not available');
 	}
-
-	const bookingId = params.id;
 
 	// Get booking details
 	const booking = await db
@@ -46,25 +55,31 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	if (booking.status === 'canceled') {
 		return {
 			booking,
-			alreadyCanceled: true
+			alreadyCanceled: true,
+			isPreview: false
 		};
 	}
 
 	return {
 		booking,
-		alreadyCanceled: false
+		alreadyCanceled: false,
+		isPreview: false
 	};
 };
 
 export const actions: Actions = {
-	default: async ({ params, platform, request }) => {
+	default: async ({ params, platform, request, url }) => {
+		const bookingId = params.id;
+
+		if (isLocalPreviewBooking(bookingId, url.hostname)) {
+			return fail(400, { error: 'Preview mode cannot cancel bookings' });
+		}
+
 		const db = platform?.env?.DB;
 		const env = platform?.env;
 		if (!db || !env) {
 			return fail(500, { error: 'Database not available' });
 		}
-
-		const bookingId = params.id;
 
 		// Get cancellation reason from form
 		const formData = await request.formData();

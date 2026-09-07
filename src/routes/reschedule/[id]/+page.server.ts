@@ -4,15 +4,25 @@
 
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { getReschedulePreviewBooking, isLocalPreviewBooking } from '$lib/preview/sampleBooking';
 
-export const load: PageServerLoad = async ({ params, platform }) => {
+export const load: PageServerLoad = async ({ params, platform, url }) => {
+	const bookingId = params.id;
+
+	if (isLocalPreviewBooking(bookingId, url.hostname)) {
+		return {
+			booking: getReschedulePreviewBooking(),
+			timeFormat: '12h' as const,
+			appUrl: '',
+			isPreview: true
+		};
+	}
+
 	const db = platform?.env?.DB;
 	const env = platform?.env;
 	if (!db || !env) {
 		throw error(500, 'Database not available');
 	}
-
-	const bookingId = params.id;
 
 	// Get booking details including event type and user settings
 	const booking = await db
@@ -84,6 +94,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			brandColor: booking.brand_color || '#3b82f6'
 		},
 		timeFormat,
-		appUrl: env.APP_URL || ''
+		appUrl: env.APP_URL || '',
+		isPreview: false
 	};
 };

@@ -2,11 +2,18 @@
 	import type { PageData } from './$types';
 	import TimezoneSelector from '$lib/components/TimezoneSelector.svelte';
 	import { detectTimezone, getCurrentTime } from '$lib/constants/timezones';
-	import { formatDateLocal, formatSelectedDate } from '$lib/utils/dateFormatters';
+	import { formatSelectedDate } from '$lib/utils/dateFormatters';
 	import { BookingCalendar } from '$lib/components/booking';
 	import { meetingJoinLabel, meetingShortLabel, meetingTypeForInviteCalendar } from '$lib/meeting';
+	import {
+		getLocalPreviewSlots,
+		getPreviewSampleSlot,
+		PREVIEW_MEETING_URL
+	} from '$lib/preview/sampleBooking';
 
 	let { data }: { data: PageData } = $props();
+
+	const previewSample = getPreviewSampleSlot();
 
 	// Brand colors
 	// Page-facing "brand" values resolve through the CSS custom properties
@@ -27,6 +34,7 @@
 	// Track which dates have available slots
 	let availableDates = $state<Set<string>>(new Set());
 	let loadingAvailability = $state(false);
+	let previewReady = $state(false);
 
 	// Timezone state
 	let selectedTimezone = $state(detectTimezone());
@@ -76,6 +84,16 @@
 	}
 
 	async function fetchMonthAvailability() {
+		if (data.isPreview) {
+			const sampleDay = new Date(`${previewSample.date}T12:00:00`);
+			const isSampleMonth =
+				currentMonth.getFullYear() === sampleDay.getFullYear() &&
+				currentMonth.getMonth() === sampleDay.getMonth();
+			availableDates = isSampleMonth ? new Set([previewSample.date]) : new Set();
+			loadingAvailability = false;
+			return;
+		}
+
 		loadingAvailability = true;
 
 		try {
@@ -97,12 +115,31 @@
 	}
 
 	$effect(() => {
+		if (data.isPreview) return;
 		fetchMonthAvailability();
+	});
+
+	$effect(() => {
+		if (!data.isPreview || previewReady) return;
+		previewReady = true;
+
+		const sampleDay = new Date(`${previewSample.date}T12:00:00`);
+		currentMonth = new Date(sampleDay.getFullYear(), sampleDay.getMonth(), 1);
+		availableDates = new Set([previewSample.date]);
 	});
 
 	async function handleDateSelect(dateStr: string) {
 		selectedDate = dateStr;
 		selectedSlot = null;
+
+		if (data.isPreview) {
+			loading = true;
+			availableSlots =
+				dateStr === previewSample.date ? getLocalPreviewSlots(previewSample.slot) : [];
+			loading = false;
+			return;
+		}
+
 		loading = true;
 
 		try {
@@ -124,6 +161,12 @@
 
 	async function handleReschedule() {
 		if (!selectedSlot) return;
+
+		if (data.isPreview) {
+			newMeetingUrl = PREVIEW_MEETING_URL;
+			rescheduleStatus = 'success';
+			return;
+		}
 
 		rescheduleStatus = 'submitting';
 		rescheduleError = '';
@@ -165,43 +208,57 @@
 >
 	{#if rescheduleStatus === 'success'}
 		<!-- Success Screen -->
-		<div class="bg-surface rounded-large border border-border shadow-lg p-8 max-w-md w-full">
+		<div class="bg-bg p-6 sm:border sm:border-border sm:rounded-large sm:shadow-lg sm:p-8 max-w-md w-[calc(100%-1rem)] sm:w-full mx-2">
 			<div class="text-center">
-				<div class="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style="background-color: var(--bg-secondary)">
-					<svg class="w-10 h-10 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+				<div class="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-[6px] border-accent bg-transparent sm:mb-5 sm:h-28 sm:w-28">
+					<svg class="h-16 w-16 text-accent sm:h-20 sm:w-20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
 					</svg>
 				</div>
-				<h1 class="font-display text-2xl font-medium text-text mb-2">Meeting Rescheduled!</h1>
-				<p class="text-text-secondary mb-8">Your meeting has been rescheduled. A calendar update has been sent to your email.</p>
+				<h1 class="font-display text-xl sm:text-2xl font-medium text-text mb-2">Meeting Rescheduled!</h1>
+				<p class="mb-4 text-sm text-text-secondary sm:mb-5 sm:text-base">Your meeting has been rescheduled. A calendar update has been sent to your email.</p>
 
-				<div class="rounded-large p-6 text-left mb-6" style="background-color: var(--bg-secondary)">
-					<h3 class="font-display text-lg font-medium text-text mb-4">{data.booking.eventName}</h3>
-					<div class="space-y-3 text-sm">
+				<div class="mb-4 rounded-lg border border-border bg-[var(--field-bg)] p-6 text-left sm:mb-5">
+					<h3 class="mb-4 font-semibold text-text">{data.booking.eventName}</h3>
+					<div class="space-y-4 text-sm">
 						<div class="flex items-start gap-3">
-							<svg class="w-5 h-5 text-text-secondary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="w-5 h-5 text-text-secondary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
 							</svg>
 							<div>
-								<p class="text-text font-medium">New Time</p>
-								<p class="text-text-secondary">{selectedSlot ? formatTimeRange(selectedSlot.start, selectedSlot.end) : ''}</p>
-								<p class="text-text-secondary">{selectedDate ? formatSelectedDate(selectedDate) : ''}</p>
+								<p class="text-text">{selectedSlot ? formatTimeRange(selectedSlot.start, selectedSlot.end) : ''}</p>
+								<p class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mt-1">{selectedDate ? formatSelectedDate(selectedDate) : ''}</p>
 							</div>
 						</div>
 						{#if newMeetingUrl}
-							<div class="flex items-start gap-3">
-								<svg class="w-5 h-5 text-text-secondary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<div class="flex items-center gap-3">
+								<svg class="w-5 h-5 text-text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
 								</svg>
-								<a href={newMeetingUrl} target="_blank" class="break-all pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors text-accent">{meetingJoinLabel(meetingTypeForInviteCalendar(data.booking.inviteCalendar))}</a>
+								<a
+									href={newMeetingUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="link-underline break-all"
+									style="color: {brandColor}"
+								>{meetingJoinLabel(meetingTypeForInviteCalendar(data.booking.inviteCalendar))}</a>
 							</div>
 						{/if}
 					</div>
 				</div>
 
-				<div class="flex items-center justify-center gap-6 text-sm">
-					<a href={`/reschedule/${data.booking.id}`} class="pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors text-accent">Reschedule</a>
-					<a href={`/cancel/${data.booking.id}`} class="pb-[3px] no-underline border-b-2 border-transparent hover:border-current transition-colors text-accent">Cancel</a>
+				<div class="flex items-center justify-center gap-3 text-sm text-text-secondary">
+					<a
+						href={`/reschedule/${data.booking.id}`}
+						class="link-underline"
+						style="color: {brandColor}"
+					>Reschedule</a>
+					<span class="select-none leading-none text-text-secondary" aria-hidden="true">&middot;</span>
+					<a
+						href={`/cancel/${data.booking.id}`}
+						class="link-underline"
+						style="color: {brandColor}"
+					>Cancel</a>
 				</div>
 			</div>
 		</div>
@@ -251,10 +308,10 @@
 					<!-- Current booking info -->
 					<div class="mt-6 pt-6 border-t border-border">
 						<p class="font-meta text-extrasmall uppercase tracking-wide text-text-secondary mb-2">Current booking</p>
-						<div class="rounded-large p-3 text-sm border border-red-500/30" style="background-color: rgba(239, 68, 68, 0.1)">
-							<p class="font-medium text-red-400">{formatOriginalDateTime(data.booking.startTime)}</p>
-							<p class="text-red-400/80">{data.booking.attendeeName}</p>
-							<p class="text-red-400/70 text-xs">{data.booking.attendeeEmail}</p>
+						<div class="rounded-large border border-border bg-[var(--field-bg)] p-3 text-sm">
+							<p class="font-medium text-text">{formatOriginalDateTime(data.booking.startTime)}</p>
+							<p class="text-text-secondary">{data.booking.attendeeName}</p>
+							<p class="text-xs text-text-secondary">{data.booking.attendeeEmail}</p>
 						</div>
 					</div>
 
@@ -373,7 +430,8 @@
 				<div class="mt-4 text-center">
 					<a
 						href="/cancel/{data.booking.id}"
-						class="text-sm text-text-secondary hover:text-red-400 transition"
+						class="inline-block py-2.5 px-2 text-sm link-underline transition"
+						style="color: {brandColor}"
 					>
 						Or cancel this meeting instead
 					</a>
