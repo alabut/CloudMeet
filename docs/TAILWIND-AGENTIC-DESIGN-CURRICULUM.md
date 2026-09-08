@@ -17,7 +17,14 @@ The basic rhythm I want to practice is:
 
 ## Git workflow practice
 
-Keep one task on one feature branch. Before switching branches or starting unrelated work, run `git status` and either commit, stash, or discard dirty changes — do not leave half-finished work silently behind. Commit small checkpoints when a slice is stable enough to roll back to. Open a PR when the branch is ready, merge through review, then delete the branch. Use git worktrees only for genuinely parallel work (e.g. two agents on different features), not for every small task.
+Keep one task on one feature branch. Before switching branches or starting unrelated work, run `git status` and either commit, stash, or discard dirty changes — do not leave half-finished work silently behind. Commit small checkpoints when a slice is stable enough to roll back to. Open a PR when the branch is ready, merge through review, then finish the branch using the checklist below. Use git worktrees only for genuinely parallel work (e.g. two agents on different features), not for every small task.
+
+### Finish a feature branch
+
+1. Open a PR when the branch is ready; get review and merge to `main`.
+2. **Remote branch:** after merge, GitHub may delete the remote branch automatically if the repo is configured that way. If the remote branch still exists, delete it on GitHub when you are done with the PR.
+3. **Local branch:** switch to `main`, pull so local `main` matches the merged result, then delete the local feature branch separately — only after confirming it is fully merged (`git branch --merged main`). PR merge does not remove your local checkout.
+4. Run `git status` on `main` and confirm a clean tree before starting the next branch.
 
 The important distinction is that reuse should follow meaning. A reusable `Notice` or `BookingSummary` component establishes behavior, accessibility, and visual defaults. A class called `.gray-box-with-padding` merely gives an arbitrary bundle of CSS a new name.
 
@@ -122,7 +129,7 @@ A cost-conscious first target is 10–20 canonical public route/state screenshot
 
 - One feature branch per task; inspect `git status` before switching context.
 - Commit checkpoints at stable rollback points; do not amend pushed commits.
-- PR → merge → delete branch is the default completion path.
+- PR → merge → remote branch cleanup (often automatic on GitHub) → local branch delete after confirming merged on `main`.
 - Use worktrees for parallel agents on independent features, not routine single-file edits.
 - Never push, deploy, or touch production secrets unless explicitly authorized.
 
