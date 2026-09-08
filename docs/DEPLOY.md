@@ -96,10 +96,14 @@ Domain status went to Cloudflare's `active` with SSL within about a minute of th
 
 ## Post-deploy smoke test — passed (2026-08-21)
 
-Full walkthrough and results are in `SETUP-NOTES.md` under "Live smoke test." Summary: logged into `/dashboard` with the real Google account, created a "30 Minute Meeting" event type (slug `30min`) with Mon–Fri 9–5 availability, booked a real slot as a visitor, and confirmed the booking in remote D1 and as a real event with a working Google Meet link on the actual Google Calendar.
+Full walkthrough and results are in `SETUP-NOTES.md` under "Live smoke test."
+
+**Historical note (2026-08-21):** logged into `/dashboard` with the real Google account, created a "30 Minute Meeting" event type (slug `30min`) with Mon–Fri 9–5 availability, booked a real slot as a visitor, and confirmed the booking in remote D1 and as a real event with a working **Google Meet** link on Google Calendar. That was the behavior at first deploy.
+
+**Current behavior (since 2026-09-05):** bookings use the configured recurring **Zoom** URL (`ZOOM_MEETING_URL`) in the Google Calendar event location and description. The app does **not** request Google Meet `conferenceData`. Do not restore Meet conference creation when redeploying or debugging. See `docs/BREAKPOINT.md`.
 
 To repeat this test after future changes:
 1. Visit `https://schedule.alabut.com/dashboard`, sign in.
 2. Confirm your event type(s) and availability are still there.
 3. Visit `https://schedule.alabut.com/<event-slug>` in a private window and complete a test booking.
-4. Confirm the booking appears in the dashboard's bookings list and on Google Calendar.
+4. Confirm the booking appears in the dashboard's bookings list and on Google Calendar, with the **Zoom** join link (not Google Meet).

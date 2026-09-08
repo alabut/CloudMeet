@@ -145,12 +145,26 @@ Loopback-only. Deterministic fixtures from `src/lib/preview/sampleDashboard.ts`.
 
 ## Safety checklist
 
-- [ ] Preview IDs/tokens return 404 on non-loopback hosts
-- [ ] Dashboard preview routes (`/__preview/dashboard/*`, `/design-system/dashboard`) return 404 on non-loopback hosts
-- [ ] Preview form actions do not reach DB/calendar/email
-- [ ] Real booking IDs still use production loaders/actions
-- [ ] No raw 500 messages on public error page
-- [ ] Zoom wording preserved on reschedule success
+- [x] Preview IDs/tokens return 404 on non-loopback hosts (source: `isLocalPreviewBooking` / `isLocalPreviewProposal` require loopback; non-loopback preview IDs fall through to DB lookup → 404)
+- [x] Dashboard preview routes (`/__preview/dashboard/*`, `/design-system/dashboard`) return 404 on non-loopback hosts (production GET 404, 2026-09-08)
+- [x] Preview form actions do not reach DB/calendar/email (behavior test `preview pages make no transaction requests`; source: preview action guards in cancel/reschedule-response)
+- [x] Real booking IDs still use production loaders/actions (source: non-preview branches in cancel, reschedule, and reschedule-response loaders)
+- [x] No raw 500 messages on public error page (source: `+error.svelte` shows generic copy only; visual regression on loopback `__preview/error/500`)
+- [x] Zoom wording preserved on reschedule success (source: `meetingJoinLabel` → "Join Zoom Meeting" for Google-calendar bookings; visual regression `reschedule-success.png`)
+
+---
+
+## Closeout verification (2026-09-08)
+
+Independent audit closeout reconciliation. Commands run locally on macOS arm64, Node v24.12.0:
+
+| Check | Result |
+|---|---|
+| `npm run design:lint` | exit 0 — 14 known warnings, no errors |
+| `npm run build` | exit 0 |
+| `npm run test:visual` | exit 0 — 156 passed, 8 skipped |
+
+Safe production GET status checks (no transactional requests): `/30min` 200, `/privacy` 200, `/__preview/error/404` 404, `/__preview/dashboard/overview` 404, `/design-system/dashboard` 404.
 
 ---
 
