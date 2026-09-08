@@ -1,7 +1,7 @@
 [mc project=design-engineering-practice thread=2026-09-08-design-engineering-practice]
-===== FRESH AGENT HANDOFF =====
+===== CURSOR HANDOFF =====
 
-## Model pick (human: set this in the model picker BEFORE sending)
+## Model pick (human: set this in the Cursor model picker BEFORE sending)
 Recommended: Composer 2.5
 Why: The first session is mostly concrete repo scaffolding—Markdown curriculum, folder layout, templates, and links—not open-ended product judgment.
 
@@ -57,4 +57,4 @@ New repository to be created at a path Al chooses (suggested: `/Users/alabut/Dev
 
 ===== END HANDOFF =====
 
-Paste into a fresh Cursor Agent chat → model picker = Composer 2.5 → send.
+Paste into Cursor Agent → model picker = Composer 2.5 → send.
