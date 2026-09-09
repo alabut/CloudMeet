@@ -363,6 +363,8 @@
 		name="description"
 		content="Book a {displayEventName} with {data.user?.name || 'Al Abut'}."
 	/>
+	<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcf9ee" />
+	<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111111" />
 </svelte:head>
 
 <!-- ===== USER STYLE ANCHOR: booking-page-layout-wrapper ===== -->

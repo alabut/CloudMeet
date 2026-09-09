@@ -68,6 +68,10 @@ Sections:
 	select {
 		font-size: 16px;
 	}
+
+	html:has(.public-flow) {
+		background-color: var(--bg);
+	}
 }
 
 @layer components {
