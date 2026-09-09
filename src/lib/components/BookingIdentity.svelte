@@ -36,9 +36,9 @@
 		</a>
 
 		<div class="max-w-2xl">
-			<h1 class="font-display text-3xl font-medium leading-tight text-text md:text-4xl" style="margin-top: 0">{name}</h1>
-			<p class="mt-1 font-display text-lg italic text-text md:text-xl">Product Designer &amp; Startup Leader</p>
-			<p class="mt-3 flex flex-col gap-1 text-sm leading-relaxed text-text-secondary md:text-base">
+			<h1 class="font-display text-4xl font-medium leading-tight text-text md:text-4xl" style="margin-top: 0">{name}</h1>
+			<p class="mt-1 font-display text-xl italic text-text md:text-xl">Product Designer &amp; Startup Leader</p>
+			<p class="mt-3 flex flex-col gap-1 leading-relaxed text-text md:text-base">
 				<span>Cofounder backed by Y Combinator, NEA, and 500 Startups.</span>
 				<span>Founding designer at companies acquired by E-Trade, Groupon, Rubicon, and FARO.</span>
 			</p>

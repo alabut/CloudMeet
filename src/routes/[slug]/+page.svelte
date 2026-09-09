@@ -496,7 +496,7 @@
 
 				<!-- Description -->
 				{#if displayDescription || data.eventType?.description}
-					<div class="px-6 pb-5 text-text-secondary prose prose-sm max-w-none prose-headings:text-text prose-p:text-text-secondary prose-strong:text-text prose-a:text-accent prose-li:text-text-secondary">
+					<div class="px-6 pb-5 prose max-w-none prose-headings:text-text prose-p:text-text prose-strong:text-text prose-a:text-accent prose-li:text-text">
 						{#if displayDescription}
 							<p class="text-center"><strong>{schedulerHeading}</strong><br /> {displayDescription}</p>
 						{:else}
