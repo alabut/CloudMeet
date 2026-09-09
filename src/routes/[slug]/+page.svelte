@@ -392,6 +392,8 @@
 		<div class="hidden w-full max-w-[920px] md:flex md:min-h-screen md:flex-col md:justify-center">
 			<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
 
+			<hr class="mx-auto my-8 w-16 border-t-4 border-accent" />
+
 			<div class="w-full">
 				<div class="flex min-h-[544px] w-full bg-bg border border-border rounded-large overflow-hidden">
 					<!-- Left Sidebar -->

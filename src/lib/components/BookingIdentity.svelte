@@ -10,7 +10,7 @@
 	let { profileImage = null, name = 'Al Abut' }: Props = $props();
 </script>
 
-<section class="relative w-full max-w-[920px] px-6 pt-12 pb-5 text-center md:px-0 md:pt-0 md:pb-[clamp(3rem,7vh,6rem)] md:text-left">
+<section class="relative w-full max-w-[920px] px-6 pt-12 pb-5 text-center md:px-0 md:pt-0 md:pb-8 md:text-left">
 	<BrandLogo
 		class="absolute right-0 top-0 hidden md:block"
 		imageClass="h-10 w-auto"
