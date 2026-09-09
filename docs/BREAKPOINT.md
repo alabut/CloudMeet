@@ -1,6 +1,6 @@
-# CloudMeet breakpoint — 2026-09-05
+# CloudMeet breakpoint — updated 2026-09-09
 
-Pause here. Infrastructure is *almost* done; ops alerting is the remaining piece. Design work can proceed in parallel on a **branch**.
+V1 is in a good place. Public booking design, dashboard functional/visual work, Zoom invites, Google OAuth in production, and Healthchecks alerting are merged on `main` and pushed. There is no required infra task left.
 
 Live: https://schedule.alabut.com  
 Repo: `/Users/alabut/Developer/CloudMeet` (`origin` = `alabut/CloudMeet`)  
@@ -13,7 +13,7 @@ This pause commit on `main` should be around `1eaf4fc` (watchdog ping) plus late
 Coming back to **this Cursor conversation** is fine. Long threads get summarized, so **this file is the source of truth**, not the scrollback.
 
 - **Infra / Google / cron / Emailit / healthchecks** → this chat (or a new chat that is told to read this file first).
-- **Visual / copy / public booking UI** → a **separate** Codex (or other) session using the prompt at the bottom. Prefer a git **branch** so `main` deploys from this infra thread don’t fight design commits.
+- **Design system practice / further polish** → optional; see `docs/collaboration/001-design-engineering-practice.md`. Public + dashboard design already landed on `main`.
 
 Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actions `deploy.yml`). That is intentional now. Older docs that say “deploy is manual / Actions will create the wrong D1” are **stale**.
 
@@ -55,24 +55,28 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 
 ---
 
-## Watchdog status (2026-09-06)
+## Watchdog status (done 2026-09-06)
 
-- Healthchecks check **CloudMeet cron** is created (Simple schedule; hobby-friendly period/grace — typically 1 day / 1 hour).
-- `HEALTHCHECK_URL` is set on GitHub Actions secrets **and** the live `cloudmeet-cron` worker.
-- Manual success ping returned HTTP 200 (check should show **Up**).
-- Cron still runs every 5 minutes and will ping success or `/fail` on its own; you only get email when Google/cron is actually down (or from Healthchecks’ test notification).
+- Healthchecks check **CloudMeet cron**: Simple, period 1 day, grace 1 hour, email to `alabut@gmail.com`.
+- `HEALTHCHECK_URL` is on GitHub Actions and the live `cloudmeet-cron` worker.
+- Check went **Up**; Al received the test notification email.
 
-### Still do once (human QA)
-1. In Healthchecks, confirm the check is **Up**.
-2. Use **Send a test notification** once — proves email delivery to `alabut@gmail.com`.
-3. Optional: wait ~5–10 minutes and refresh the check’s ping log to see a ping from Cloudflare (not just the manual one).
+## Since then (merged, 2026-09-06 → 2026-09-09)
 
-## What’s next (infra) — optional after watchdog QA
+- Public booking design polish and edge states are on `main`.
+- Dashboard visual system, emails-page honesty (“not configured in V1”), accessibility, and Playwright visual QA are on `main`.
+- Working tree is clean and matches `origin/main`.
 
-1. Optional: hide cancelled bookings on the dashboard (product, not blocking).
-2. Optional later: Resend for host-only alerts or reminders — not required for sharing the booking link.
-3. Hygiene: rename GCP project `workspace-mcp` when you care; don’t create extra projects for CloudMeet.
-4. Rotate the Cloudflare API token that appeared in an earlier chat, when convenient.
+## Recommended next
+
+**Use it.** Share `https://schedule.alabut.com` when you want. One optional smoke booking after the redesign is enough if you want peace of mind; the Sep 7 invite already proved the Google + Zoom path.
+
+Do not treat these as required:
+
+1. Hide cancelled bookings on the dashboard (still listed until the date passes).
+2. Resend later — only if you change your mind about branded mail. Google Calendar invitations stay the guest path. Do not enable Emailit.
+3. Rename GCP project `workspace-mcp`.
+4. Rotate the Cloudflare API token that appeared in an earlier chat.
 
 **Do not** enable Emailit. **Do not** click Back to testing in Google Auth Audience.
 
@@ -89,7 +93,9 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 
 ---
 
-## Codex / design session — paste this
+## Historical Codex design prompt (already executed)
+
+Do not re-run this. It is kept only as a record of the design session that already merged.
 
 ```
 Work only on CloudMeet visual/copy design tweaks. Do not touch infrastructure.
