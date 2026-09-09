@@ -622,7 +622,7 @@
 								<button
 									type="button"
 									onclick={() => selectSlot(slot)}
-									class="py-3 px-4 border-2 rounded-lg text-sm font-semibold transition
+									class="py-3 px-4 border-2 rounded-lg text-sm font-semibold transition cursor-pointer
 										{isSelected ? 'border-accent bg-accent text-white' : 'border-accent text-accent'}"
 								>
 									{formatTime(slot.start)}

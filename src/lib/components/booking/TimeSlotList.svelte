@@ -43,11 +43,9 @@
 				<button
 					type="button"
 					onclick={() => onSelectSlot(slot)}
-					class="w-full py-2.5 px-3 border-2 rounded-lg text-sm font-semibold transition"
-					class:border-accent={isSelected}
+					class="w-full py-2.5 px-3 border-2 rounded-lg text-sm font-semibold transition cursor-pointer border-accent text-accent hover:bg-accent hover:text-white hover:border-accent"
 					class:bg-accent={isSelected}
 					class:text-white={isSelected}
-					style={isSelected ? '' : `border-color: ${brandColor}; color: ${brandColor}`}
 				>
 					{formatTime(slot.start)}
 				</button>
