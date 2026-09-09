@@ -11,7 +11,6 @@
 		brandColor: string;
 		formatTime: (isoStr: string) => string;
 		onSelectSlot: (slot: TimeSlot) => void;
-		onConfirm: () => void;
 	}
 
 	let {
@@ -20,8 +19,7 @@
 		loading,
 		brandColor,
 		formatTime,
-		onSelectSlot,
-		onConfirm
+		onSelectSlot
 	}: Props = $props();
 </script>
 
@@ -51,18 +49,5 @@
 				</button>
 			{/each}
 		</div>
-
-		{#if selectedSlot}
-			<div class="mt-2 flex-shrink-0 border-t border-border pt-3">
-				<button
-					type="button"
-					onclick={onConfirm}
-					class="w-full rounded-lg px-3 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-					style="background-color: {brandColor}"
-				>
-					Next
-				</button>
-			</div>
-		{/if}
 	{/if}
 </div>

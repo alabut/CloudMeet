@@ -458,8 +458,7 @@
 										{loading}
 										{brandColor}
 										{formatTime}
-										onSelectSlot={selectSlot}
-										onConfirm={confirmSlot}
+										onSelectSlot={(slot) => { selectSlot(slot); confirmSlot(); }}
 									/>
 								{/if}
 							</div>
@@ -621,7 +620,7 @@
 								{@const isSelected = selectedSlot?.start === slot.start && selectedSlot?.end === slot.end}
 								<button
 									type="button"
-									onclick={() => selectSlot(slot)}
+									onclick={() => { selectSlot(slot); confirmSlot(); }}
 									class="py-3 px-4 border-2 rounded-lg text-sm font-semibold transition cursor-pointer
 										{isSelected ? 'border-accent bg-accent text-white' : 'border-accent text-accent'}"
 								>
@@ -629,15 +628,6 @@
 								</button>
 							{/each}
 						</div>
-						{#if selectedSlot}
-							<button
-								type="button"
-								onclick={confirmSlot}
-								class="w-full mt-6 py-3 px-6 bg-accent hover:bg-accent-hover text-white rounded-full font-semibold transition"
-							>
-								Next
-							</button>
-						{/if}
 					{/if}
 				</div>
 			{/if}
