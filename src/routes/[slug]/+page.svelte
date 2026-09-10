@@ -207,7 +207,7 @@
 
 			// Desktop always opens in the complete three-panel view. Mobile keeps its
 			// explicit date-first flow so its finished interaction remains unchanged.
-			if (browser && window.matchMedia('(min-width: 768px)').matches && !selectedDate && dates.length > 0) {
+			if (browser && window.matchMedia('(min-width: 1024px)').matches && !selectedDate && dates.length > 0) {
 				void handleDateSelect([...dates].sort()[0], false);
 			}
 		} catch (error) {
@@ -369,7 +369,7 @@
 
 <!-- ===== USER STYLE ANCHOR: booking-page-layout-wrapper ===== -->
 <div
-	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center {bookingStatus === 'success' || isSuccessPreview ? '' : 'md:px-gutter'}"
+	class="public-flow min-h-screen bg-bg text-text font-serif flex flex-col items-center {bookingStatus === 'success' || isSuccessPreview ? '' : 'lg:px-gutter'}"
 	style="--brand-color: {brandColor}; --brand-light: {brandDark}; --brand-lighter: {brandLighter}; --brand-dark: {brandDark}; --brand-rgb: {colors.rgb.r}, {colors.rgb.g}, {colors.rgb.b};"
 >
 	{#if bookingStatus === 'success' || isSuccessPreview}
@@ -389,10 +389,10 @@
 		</div>
 	{:else}
 		<!-- Desktop: vertically center identity + booking card when content fits viewport -->
-		<div class="hidden w-full max-w-[920px] md:flex md:min-h-screen md:flex-col md:justify-center">
+		<div class="hidden w-full max-w-[920px] lg:flex lg:min-h-screen lg:flex-col lg:justify-center">
 			<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
 
-			<hr class="mx-auto my-8 w-16 border-t-4 border-accent" />
+			<hr class="mx-auto my-10 w-16 border-t-4 border-accent" />
 
 			<div class="w-full">
 				<div class="flex min-h-[544px] w-full bg-bg border border-border rounded-large overflow-hidden">
@@ -458,8 +458,7 @@
 										{loading}
 										{brandColor}
 										{formatTime}
-										onSelectSlot={selectSlot}
-										onConfirm={confirmSlot}
+										onSelectSlot={(slot) => { selectSlot(slot); confirmSlot(); }}
 									/>
 								{/if}
 							</div>
@@ -469,8 +468,8 @@
 			</div>
 		</div>
 
-		<!-- MOBILE LAYOUT (< 768px) - Full white page -->
-		<div class="md:hidden w-full">
+		<!-- MOBILE / SINGLE-COLUMN LAYOUT (< 1024px) — fluid, capped so it does not sprawl on wide viewports -->
+		<div class="lg:hidden mx-auto w-full max-w-md">
 			<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
 			<div class="min-h-screen w-full bg-bg">
 			<!-- Cover Image with black line below -->
@@ -621,23 +620,14 @@
 								{@const isSelected = selectedSlot?.start === slot.start && selectedSlot?.end === slot.end}
 								<button
 									type="button"
-									onclick={() => selectSlot(slot)}
-									class="py-3 px-4 border-2 rounded-lg text-sm font-semibold transition
+									onclick={() => { selectSlot(slot); confirmSlot(); }}
+									class="py-3 px-4 border-2 rounded-lg text-sm font-semibold transition cursor-pointer
 										{isSelected ? 'border-accent bg-accent text-white' : 'border-accent text-accent'}"
 								>
 									{formatTime(slot.start)}
 								</button>
 							{/each}
 						</div>
-						{#if selectedSlot}
-							<button
-								type="button"
-								onclick={confirmSlot}
-								class="w-full mt-6 py-3 px-6 bg-accent hover:bg-accent-hover text-white rounded-full font-semibold transition"
-							>
-								Next
-							</button>
-						{/if}
 					{/if}
 				</div>
 			{/if}
