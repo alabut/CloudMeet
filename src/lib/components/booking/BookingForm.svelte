@@ -23,7 +23,7 @@
 </script>
 
 <!-- ===== USER STYLE ANCHOR: booking-form ===== -->
-<div class="max-w-md">
+<div class="w-full">
 	<h2 class="font-display text-xl font-medium text-text mb-6">Enter Details</h2>
 
 	{#if bookingError}
@@ -70,10 +70,7 @@
 		<button
 			type="submit"
 			disabled={bookingStatus === 'submitting'}
-			class="w-full text-white py-3 px-6 rounded-full font-semibold transition disabled:opacity-50"
-			style="background-color: {brandColor}"
-			onmouseenter={(e) => e.currentTarget.style.backgroundColor = brandDark}
-			onmouseleave={(e) => e.currentTarget.style.backgroundColor = brandColor}
+			class="w-full bg-accent py-3 px-6 rounded-full font-semibold text-white transition hover:bg-accent-hover disabled:opacity-50"
 		>
 			{bookingStatus === 'submitting' ? 'Scheduling...' : 'Schedule Event'}
 		</button>

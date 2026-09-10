@@ -363,6 +363,8 @@
 		name="description"
 		content="Book a {displayEventName} with {data.user?.name || 'Al Abut'}."
 	/>
+	<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcf9ee" />
+	<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111111" />
 </svelte:head>
 
 <!-- ===== USER STYLE ANCHOR: booking-page-layout-wrapper ===== -->
@@ -389,6 +391,8 @@
 		<!-- Desktop: vertically center identity + booking card when content fits viewport -->
 		<div class="hidden w-full max-w-[920px] md:flex md:min-h-screen md:flex-col md:justify-center">
 			<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
+
+			<hr class="mx-auto my-8 w-16 border-t-4 border-accent" />
 
 			<div class="w-full">
 				<div class="flex min-h-[544px] w-full bg-bg border border-border rounded-large overflow-hidden">
@@ -494,7 +498,7 @@
 
 				<!-- Description -->
 				{#if displayDescription || data.eventType?.description}
-					<div class="px-6 pb-5 text-text-secondary prose prose-sm max-w-none prose-headings:text-text prose-p:text-text-secondary prose-strong:text-text prose-a:text-accent prose-li:text-text-secondary">
+					<div class="px-6 pb-5 prose max-w-none prose-headings:text-text prose-p:text-text prose-strong:text-text prose-a:text-accent prose-li:text-text">
 						{#if displayDescription}
 							<p class="text-center"><strong>{schedulerHeading}</strong><br /> {displayDescription}</p>
 						{:else}
