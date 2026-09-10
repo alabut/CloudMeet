@@ -468,8 +468,8 @@
 			</div>
 		</div>
 
-		<!-- MOBILE LAYOUT (< 768px) - Full white page -->
-		<div class="lg:hidden w-full">
+		<!-- MOBILE / SINGLE-COLUMN LAYOUT (< 1024px) — fluid, capped so it does not sprawl on wide viewports -->
+		<div class="lg:hidden mx-auto w-full max-w-md">
 			<BookingIdentity profileImage={data.user?.profileImage} name={data.user?.name || 'Al Abut'} />
 			<div class="min-h-screen w-full bg-bg">
 			<!-- Cover Image with black line below -->
