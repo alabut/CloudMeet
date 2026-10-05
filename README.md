@@ -13,6 +13,7 @@ Track active bugs, features, and improvements in [GitHub Issues](https://github.
 - [docs/DESIGN.md](docs/DESIGN.md) holds the design contract; [docs/STYLE-MAP.md](docs/STYLE-MAP.md) points to public-booking implementation files.
 - `npm run dev` builds and runs the local Cloudflare Pages preview. `npm run dev:watch` starts Vite for UI iteration; it is a different runtime surface. Use existing working dependencies and local configuration.
 - `npm run build` builds the app; `npm run check:dashboard` and `npm run test:visual` are available checks in `package.json`. Run checks appropriate to the affected code rather than creating real bookings for verification.
+- `.github/workflows/verify-cloudflare-access.yml` is a manual read-only credential check. It uses GitHub Actions secrets to confirm the token is active and can read the existing Pages project and cron settings; it never prints the secret or deploys. Read access does not prove every write permission.
 - A push to `main` normally triggers `.github/workflows/deploy.yml`, deploying Pages and the cron worker. For verified documentation-only housekeeping, a commit message containing `[skip ci]` skips GitHub push workflows, allowing documentation to reach `main` without deployment. Never use this for application, test, or deployment-code changes.
 - Do not provision OAuth clients, enable mail providers, refresh upstream/dependencies, or change production settings as documentation housekeeping.
 - Upstream is MIT licensed; see [LICENSE](LICENSE).
