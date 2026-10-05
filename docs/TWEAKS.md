@@ -1,4 +1,10 @@
-# Tweaks Backlog
+# Tweaks — historical decisions
+
+As of 2026-10-05, [GitHub Issues](https://github.com/alabut/CloudMeet/issues) is the sole active backlog. Optional reminders are tracked in [issue #4](https://github.com/alabut/CloudMeet/issues/4). Other deferred work and the release-safety gap are recorded in issues #5–#9.
+
+## Machine-readable notes
+
+Keep completed work and past decisions below as history. Add new work to GitHub, not this file. Historical provider pricing requires fresh investigation before implementation. Use [AGENTS.md](../AGENTS.md) for classification.
 Baseline = the "working vanilla deploy" commit. Every item below is optional; roll back to baseline any time.
 ## Quick wins (style anchors / small edits)
 - [x] **Branding pass (public visitor surfaces)** — done 2026-09-08. Visitor-facing pages use Al's branding (colors, typography, no "Powered by CloudMeet" footer). Residual `CloudMeet` strings in project/legal/internal paths (repo name, `wrangler.toml`, LICENSE, upstream attribution) are intentional and not visitor-facing branding. Not every source string was renamed.
@@ -13,7 +19,7 @@ Baseline = the "working vanilla deploy" commit. Every item below is optional; ro
 - [x] **Reschedule page breaks on phones.** FIXED (9d89265) — layout stacks and goes full width below `md`; desktop keeps the 650/920px widths and the transition. Original diagnosis: `src/routes/reschedule/[id]/+page.svelte:204` hardcodes an inline `style="width: 650px"` (920px once a date is picked) with no mobile breakpoint, so the card overflows the viewport on a 375px screen. Pre-existing from upstream CloudMeet, not introduced by the restyle. Friends will hit this on their phones — fix before sharing.
 
 ## Needs setup (documented, not built)
-- [ ] Email notifications — **decision: not now; Emailit ruled out.** Emailit has no free tier (discontinued; $20 minimum per their own pricing page), so it does not fit this project's zero-cost constraint. Two related dead ends: Cloudflare Email Routing only *forwards inbound* mail and cannot send; Cloudflare's actual Email Service needs a $5/mo Workers Paid plan **and** the domain on Cloudflare nameservers (alabut.com is on Netlify).
+- Email notifications — **deferred; tracked in [issue #4](https://github.com/alabut/CloudMeet/issues/4); Emailit ruled out.** Historical research found Emailit had no free tier ($20 minimum), so it did not fit this project's zero-cost constraint. Two related dead ends at that time: Cloudflare Email Routing only *forwards inbound* mail and cannot send; Cloudflare's actual Email Service needed a $5/mo Workers Paid plan **and** the domain on Cloudflare nameservers (alabut.com is on Netlify). Recheck terms before any future implementation.
   - **Why it can wait:** attendees already receive genuine Google Calendar invitations, verified delivering to a non-Google inbox. Branded confirmations are cosmetic.
   - **The real reason to revisit:** reminder emails before a meeting. Calendar invites don't force guest reminders. The cron worker **is deployed**; reminder *sends* still need a mail provider (not Emailit). Until then, guests use their own calendar notifications.
   - **If revisited, use Resend** — permanent free tier (~3,000/month vs the ~20/month this needs), no credit card, HTTP API (required: Cloudflare Workers cannot open raw SMTP). Brevo is a fine second choice with a larger quota, but it's a marketing platform with transactional bolted on and the extra quota is meaningless here.

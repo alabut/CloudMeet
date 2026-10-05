@@ -6,6 +6,10 @@ Before substantial design or implementation work, read [`docs/ORCHESTRATION.md`]
 
 Core rules:
 
+- GitHub Issues at https://github.com/alabut/CloudMeet/issues is the sole active backlog. Use `critical`, `bug`, `feature`, `improvement`, or `unclassified`; no Trello or GitHub Projects. `docs/BUGS.md` and `docs/TWEAKS.md` are historical records.
+- Apply AL's zero-known-bugs rule: critical issues stop work; broken promised behavior is a bug and precedes features; livable changes are improvements. Write a failing regression test before fixing a bug. Check open critical, bug, and unclassified issues before new feature work; do not quietly downgrade them.
+- The production test gate is not yet implemented: track it in issue #8. A passing build alone does not establish release safety. Never run the legacy upstream-sync workflows as routine maintenance.
+
 - Keep the primary Codex agent focused on understanding Al's intent, routing, supervision, integration, and final verification.
 - Automatically dispatch coding and implementation work to Cursor Composer 2.5 according to `docs/ORCHESTRATION.md`. Al does not need to request dispatch or choose the provider or model.
 - Automatically use Codex subagents for research, external best practices, repository discovery, comparisons, audits, and other bounded knowledge work. Give them minimal task-specific context rather than the full conversation.

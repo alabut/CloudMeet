@@ -1,10 +1,19 @@
-# CloudMeet breakpoint — updated 2026-09-09
+# CloudMeet breakpoint — updated 2026-10-05
 
-V1 is in a good place. Public booking design, dashboard functional/visual work, Zoom invites, Google OAuth in production, and Healthchecks alerting are merged on `main` and pushed. There is no required infra task left.
+The app remains deployed. [GitHub Issues](https://github.com/alabut/CloudMeet/issues) now owns the active backlog; the old bug and tweak documents preserve history. The October housekeeping is documentation and issue tracking only. No application or production settings changed.
+
+## Machine-readable notes
+
+- No unchecked application bugs were found in the historical lists. This is a backlog review, not a new end-to-end acceptance test.
+- Production test gating remains open in [issue #8](https://github.com/alabut/CloudMeet/issues/8).
+- The historical token-rotation note needs confirmation in [issue #7](https://github.com/alabut/CloudMeet/issues/7); do not inspect or change credentials during housekeeping.
+- Documentation-only publication may use `[skip ci]` to avoid the push-to-main deployment; application changes must not use it.
+
+V1 is in a good place. Public booking design, dashboard functional/visual work, Zoom invites, Google OAuth in production, and Healthchecks alerting are merged on `main` and pushed. The newly tracked deployment test gate and token-status confirmation remain housekeeping follow-ups.
 
 Live: https://schedule.alabut.com  
 Repo: `/Users/alabut/Developer/CloudMeet` (`origin` = `alabut/CloudMeet`)  
-This pause commit on `main` should be around `1eaf4fc` (watchdog ping) plus later docs.
+The app code on `main` last deployed successfully from `0df8fa6` on 2026-09-09 Pacific time. Later documentation commits do not imply a new application deployment.
 
 ---
 
@@ -71,12 +80,13 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 
 **Use it.** Share `https://schedule.alabut.com` when you want. One optional smoke booking after the redesign is enough if you want peace of mind; the Sep 7 invite already proved the Google + Zoom path.
 
-Do not treat these as required:
+Optional product improvements:
 
-1. Hide cancelled bookings on the dashboard (still listed until the date passes).
-2. Resend later — only if you change your mind about branded mail. Google Calendar invitations stay the guest path. Do not enable Emailit.
-3. Rename GCP project `workspace-mcp`.
-4. Rotate the Cloudflare API token that appeared in an earlier chat.
+1. Hide cancelled bookings: [issue #5](https://github.com/alabut/CloudMeet/issues/5).
+2. Optional reminder emails: [issue #4](https://github.com/alabut/CloudMeet/issues/4). Google Calendar invitations stay the guest path. Do not enable Emailit.
+3. Rename GCP project: [issue #6](https://github.com/alabut/CloudMeet/issues/6).
+
+Security follow-up: confirm historical token rotation in [issue #7](https://github.com/alabut/CloudMeet/issues/7). Its current status is unknown; if the exposed token is still active, this is critical work rather than optional polish.
 
 **Do not** enable Emailit. **Do not** click Back to testing in Google Auth Audience.
 

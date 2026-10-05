@@ -29,7 +29,7 @@ npx wrangler pages deploy .svelte-kit/cloudflare --project-name=cloudmeet
 
 This reads the D1/KV bindings straight from `wrangler.toml` — no dashboard binding step needed. Re-run this same command any time you want to ship a new version; it reuses the existing project.
 
-The repo also ships its own GitHub Actions-based deploy flow (`.github/workflows/deploy.yml`, triggered by forking as a template + adding repo secrets, per its README). Not used here — see `SETUP-NOTES.md`. Don't run both against the same project without reconciling `wrangler.toml`, since the Actions workflow rewrites it on every run.
+Current deployment uses `.github/workflows/deploy.yml` on pushes to `main`: it builds and deploys Pages plus the cron worker, using existing Cloudflare configuration. Documentation-only commits containing `[skip ci]` skip push workflows. The automated test gate is still pending in [issue #8](https://github.com/alabut/CloudMeet/issues/8). Do not run the legacy Upstream Sync or Sync and Deploy workflows; they import upstream changes and the latter also changes production configuration.
 
 ## 3. Production bindings
 
@@ -72,11 +72,11 @@ All six set via `wrangler pages secret put NAME --project-name=cloudmeet`:
 
 Changing a secret takes effect immediately on the next request — no redeploy strictly required, though we redeployed after the `APP_URL` change anyway for a clean state.
 
-Not set (by your choice — see `SETUP-NOTES.md` and `TWEAKS.md`): `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET` (Outlook sync), `EMAILIT_API_KEY`/`EMAIL_FROM` (transactional email). Add either the same way, any time — no code changes needed.
+Not configured for this deployment: Outlook host sync and transactional email. Do not enable Emailit. Future provider or credential changes require separate authorization; see [issue #4](https://github.com/alabut/CloudMeet/issues/4) and `docs/BREAKPOINT.md`.
 
-## 6. Cron reminder worker — not deployed
+## 6. Cron worker — deployed; reminder email sends deferred
 
-Skipped, since no email service is configured (nothing to remind). To add later, once `EMAILIT_API_KEY` is set:
+The cron worker is deployed by GitHub Actions and provides health monitoring. No transactional email provider is configured, so reminder sends remain deferred in [issue #4](https://github.com/alabut/CloudMeet/issues/4). Do not enable Emailit. The following commands are historical manual deployment reference, not housekeeping instructions:
 
 ```bash
 cd workers/cron-reminders

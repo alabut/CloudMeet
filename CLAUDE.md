@@ -4,6 +4,8 @@ Al is outcome-focused. Do not teach him agent orchestration, ask him to choose r
 
 Read and follow @docs/ORCHESTRATION.md before substantial design or implementation work.
 
+Read @AGENTS.md for the current GitHub Issues tracker and zero-known-bugs rules. GitHub Issues is the active backlog; docs/BUGS.md and docs/TWEAKS.md are history. Check open critical, bug, and unclassified issues before features. The automated deployment test gate remains pending in issue #8.
+
 Core rules:
 
 - Keep the primary Claude agent focused on understanding Al's intent, routing, supervision, integration, and final verification.
@@ -14,4 +16,3 @@ Core rules:
 - Preview locally before committing or deploying. Never deploy unless Al explicitly asks.
 - Commit a clean rollback point before risky visual experiments and after an approved result.
 - Use Cursor handoff only when Al asks for a paste-ready prompt instead of automatic dispatch.
-
