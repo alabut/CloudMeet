@@ -6,7 +6,7 @@ The app remains deployed. [GitHub Issues](https://github.com/alabut/CloudMeet/is
 
 - No unchecked application bugs were found in the historical lists. This is a backlog review, not a new end-to-end acceptance test.
 - Production test gating remains open in [issue #8](https://github.com/alabut/CloudMeet/issues/8).
-- The historical token-rotation note needs confirmation in [issue #7](https://github.com/alabut/CloudMeet/issues/7); do not inspect or change credentials during housekeeping.
+- AL classified the historical token exposure as critical in [issue #7](https://github.com/alabut/CloudMeet/issues/7). On 2026-10-05, AL reported completing Cloudflare token rolling and updating GitHub's deployment secret. The new manual Verify Cloudflare access workflow checks it without deployment; keep the issue open until the check passes. Never print token values.
 - Documentation-only publication may use `[skip ci]` to avoid the push-to-main deployment; application changes must not use it.
 
 V1 is in a good place. Public booking design, dashboard functional/visual work, Zoom invites, Google OAuth in production, and Healthchecks alerting are merged on `main` and pushed. The newly tracked deployment test gate and token-status confirmation remain housekeeping follow-ups.
@@ -60,7 +60,7 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 - Workers Free is **100k requests/day**, not 1k/month. Cron ~288/day is fine.
 - GitHub Actions secrets exist for deploy: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `APP_URL`, `CRON_SECRET`.
 - Pages secrets include Google, JWT, Zoom, etc. **Not** `EMAILIT_*` (placeholders only in local `.dev.vars`).
-- A Cloudflare API token was pasted in an earlier chat — **rotate when convenient**.
+- Historical Cloudflare API token exposure is tracked as critical in [issue #7](https://github.com/alabut/CloudMeet/issues/7). AL reported rotation on 2026-10-05; see the verification checkpoint above.
 
 ---
 
@@ -86,7 +86,7 @@ Optional product improvements:
 2. Optional reminder emails: [issue #4](https://github.com/alabut/CloudMeet/issues/4). Google Calendar invitations stay the guest path. Do not enable Emailit.
 3. Rename GCP project: [issue #6](https://github.com/alabut/CloudMeet/issues/6).
 
-Security follow-up: confirm historical token rotation in [issue #7](https://github.com/alabut/CloudMeet/issues/7). Its current status is unknown; if the exposed token is still active, this is critical work rather than optional polish.
+Security follow-up: finish replacement-token verification in [issue #7](https://github.com/alabut/CloudMeet/issues/7) before feature work. Revocation of the previous value relies on AL completing Cloudflare's Roll operation; the replacement-token check does not probe the old secret.
 
 **Do not** enable Emailit. **Do not** click Back to testing in Google Auth Audience.
 
