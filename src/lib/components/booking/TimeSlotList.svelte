@@ -8,6 +8,7 @@
 		availableSlots: TimeSlot[];
 		selectedSlot: TimeSlot | null;
 		loading: boolean;
+		availabilityStatus?: 'ready' | 'outage';
 		brandColor: string;
 		formatTime: (isoStr: string) => string;
 		onSelectSlot: (slot: TimeSlot) => void;
@@ -17,6 +18,7 @@
 		availableSlots,
 		selectedSlot,
 		loading,
+		availabilityStatus = 'ready',
 		brandColor,
 		formatTime,
 		onSelectSlot
@@ -28,6 +30,11 @@
 	{#if loading}
 		<div class="flex items-center justify-center py-8">
 			<div class="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style="border-color: {brandColor}; border-top-color: transparent"></div>
+		</div>
+	{:else if availabilityStatus === 'outage'}
+		<div class="py-4">
+			<p class="text-sm font-medium text-text">Availability is temporarily unavailable</p>
+			<p class="mt-2 text-sm leading-relaxed text-text-secondary">The host calendar could not be checked. Please try again soon.</p>
 		</div>
 	{:else if availableSlots.length === 0}
 		<div class="py-4">

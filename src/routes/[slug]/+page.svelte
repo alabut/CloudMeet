@@ -74,6 +74,7 @@
 	let selectedSlot = $state<{ start: string; end: string } | null>(null);
 	let availableSlots = $state<Array<{ start: string; end: string }>>([]);
 	let loading = $state(false);
+	let availabilityStatus = $state<'ready' | 'outage'>('ready');
 	let showForm = $state(false);
 	let bookingForm = $state({
 		name: '',
@@ -188,6 +189,14 @@
 		fetchMonthAvailability();
 	}
 
+	async function readAvailabilityFailure(response: Response) {
+		try {
+			return await response.json() as { code?: string; message?: string };
+		} catch {
+			return {};
+		}
+	}
+
 	async function fetchMonthAvailability() {
 		if (isDetailsPreview) return;
 
@@ -199,11 +208,20 @@
 			const monthStr = `${year}-${String(month).padStart(2, '0')}`;
 
 			const response = await fetch(`/api/availability/month?event=${data.slug}&month=${monthStr}`);
-			if (!response.ok) throw new Error('Failed to fetch availability');
+			if (!response.ok) {
+				const failure = await readAvailabilityFailure(response);
+				if (failure.code === 'calendar_unavailable') {
+					availabilityStatus = 'outage';
+					availableDates = new Set();
+					return;
+				}
+				throw new Error('Failed to fetch availability');
+			}
 
 			const result = await response.json() as { availableDates?: string[] };
 			const dates = result.availableDates || [];
 			availableDates = new Set(dates);
+			availabilityStatus = 'ready';
 
 			// Desktop always opens in the complete three-panel view. Mobile keeps its
 			// explicit date-first flow so its finished interaction remains unchanged.
@@ -213,6 +231,7 @@
 		} catch (error) {
 			console.error('Error fetching month availability:', error);
 			availableDates = new Set();
+			availabilityStatus = 'outage';
 		} finally {
 			loadingAvailability = false;
 		}
@@ -263,16 +282,27 @@
 		selectedSlot = null;
 		showForm = false;
 		loading = true;
+		availabilityStatus = 'ready';
 		if (advanceMobile) mobileStep = 'times';
 
 		try {
 			const response = await fetch(`/api/availability?event=${data.slug}&date=${dateStr}`);
-			if (!response.ok) throw new Error('Failed to fetch availability');
+			if (!response.ok) {
+				const failure = await readAvailabilityFailure(response);
+				if (failure.code === 'calendar_unavailable') {
+					availabilityStatus = 'outage';
+					availableSlots = [];
+					return;
+				}
+				throw new Error('Failed to fetch availability');
+			}
 			const result = await response.json() as { slots?: Array<{ start: string; end: string }> };
 			availableSlots = result.slots || [];
+			availabilityStatus = 'ready';
 		} catch (error) {
 			console.error('Error fetching availability:', error);
 			availableSlots = [];
+			availabilityStatus = 'outage';
 		} finally {
 			loading = false;
 		}
@@ -300,6 +330,7 @@
 			selectedDate = null;
 			selectedSlot = null;
 			availableSlots = [];
+			availabilityStatus = 'ready';
 		}
 	}
 
@@ -456,6 +487,7 @@
 										{availableSlots}
 										{selectedSlot}
 										{loading}
+										{availabilityStatus}
 										{brandColor}
 										{formatTime}
 										onSelectSlot={(slot) => { selectSlot(slot); confirmSlot(); }}
@@ -611,6 +643,11 @@
 					{#if loading}
 						<div class="flex items-center justify-center py-8">
 							<div class="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style="border-color: var(--brand-color); border-top-color: transparent;"></div>
+						</div>
+					{:else if availabilityStatus === 'outage'}
+						<div class="py-4 text-center">
+							<p class="text-sm font-medium text-text">Availability is temporarily unavailable</p>
+							<p class="mt-2 text-sm leading-relaxed text-text-secondary">The host calendar could not be checked. Please try again soon.</p>
 						</div>
 					{:else if availableSlots.length === 0}
 						<p class="text-sm text-text-secondary py-4 text-center">No available times for this date</p>

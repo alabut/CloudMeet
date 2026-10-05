@@ -1,6 +1,6 @@
 # CloudMeet breakpoint — updated 2026-10-05
 
-The app remains deployed. [GitHub Issues](https://github.com/alabut/CloudMeet/issues) now owns the active backlog; the old bug and tweak documents preserve history. Booking-policy decisions are captured in [BOOKING-RULES-SPEC.md](BOOKING-RULES-SPEC.md), feature #11. Critical token verification passed and issue #7 is closed. Calendar fail-closed bug #10 must be fixed before feature #11 is implemented. Host SMS is a lower-priority reach goal in issue #12. No application or production settings changed.
+The app remains deployed. [GitHub Issues](https://github.com/alabut/CloudMeet/issues) now owns the active backlog; the old bug and tweak documents preserve history. Booking-policy decisions are captured in [BOOKING-RULES-SPEC.md](BOOKING-RULES-SPEC.md), feature #11. Critical token verification passed and issue #7 is closed. Calendar fail-closed bug #10 is implemented locally and must be reviewed before feature #11 is implemented. Host SMS is a lower-priority reach goal in issue #12. No production settings changed.
 
 ## Machine-readable notes
 
@@ -9,7 +9,7 @@ The app remains deployed. [GitHub Issues](https://github.com/alabut/CloudMeet/is
 - AL classified the historical token exposure as critical in [issue #7](https://github.com/alabut/CloudMeet/issues/7). AL reported completing Cloudflare Roll and updating the GitHub deployment secret; verification run [37370894615](https://github.com/alabut/CloudMeet/actions/runs/37370894615) passed on 2026-10-05 and the issue is closed. The check verifies token access to deployment resources; it does not probe the old token or prove write/deployment access. Never print token values.
 - Documentation-only publication may use `[skip ci]` to avoid the push-to-main deployment; application changes must not use it.
 
-V1 remains deployed. Public booking design, dashboard functional/visual work, Zoom invites, Google OAuth in production, and the cron watchdog are on `main`. Issue #8 tracks the missing production test gate. Issue #10 tracks the calendar fail-open bug; the booking-policy spec is recorded separately.
+V1 remains deployed. Public booking design, dashboard functional/visual work, Zoom invites, Google OAuth in production, and the cron watchdog are on `main`. Issue #8 tracks the missing production test gate. Issue #10 is implemented locally on `fix/calendar-fails-closed`; the booking-policy spec is recorded separately.
 
 Live: https://schedule.alabut.com  
 Repo: `/Users/alabut/Developer/CloudMeet` (`origin` = `alabut/CloudMeet`)  
@@ -53,7 +53,7 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 - Bookings/reschedules **fail (503)** if Google/Outlook cannot create the invite — no fake success.
 - Dashboard probes Google token: amber reconnect banner if dead; **green “connected”** line if healthy (after `1eaf4fc`).
 - Cron worker (`cloudmeet-cron`, every 5 min) hits `/api/cron/send-reminders` and `/api/cron/health`.
-- The scheduled Google health probe only checks that the refresh token can mint an access token; it does not read the primary Calendar API. Extend this monitor and the public error state as part of [issue #10](https://github.com/alabut/CloudMeet/issues/10) and the [booking rules spec](BOOKING-RULES-SPEC.md).
+- The scheduled Google health probe now refreshes access and performs an authenticated read of Google primary before reporting healthy. Public day/month availability and booking-submission Google read failures return a machine-readable `calendar_unavailable` outage response and signal `HEALTHCHECK_URL/fail`; valid empty availability remains a separate public state. See [BOOKING-RULES-SPEC.md](BOOKING-RULES-SPEC.md).
 - Health endpoint can Emailit-alert (unused — no real Emailit keys). Worker now pings optional **`HEALTHCHECK_URL`** (success vs `{url}/fail`) for a watchdog.
 
 ### Ops / accounts (no secrets in git)
@@ -67,7 +67,7 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 
 ## Watchdog status (done 2026-09-06)
 
-- Repository notes record the Healthchecks check for **CloudMeet cron** as Simple, period 1 day, grace 1 hour, email to `alabut@gmail.com`; live settings have not been rechecked. The worker runs every 5 minutes, so align the watchdog period/grace with that cadence when completing issue #10.
+- Repository notes record the Healthchecks check for **CloudMeet cron** as Simple, period 1 day, grace 1 hour, email to `alabut@gmail.com`; live period, grace, and recipient settings have not been rechecked. The worker runs every 5 minutes, so align the watchdog period/grace with that cadence before calling monitoring complete.
 - `HEALTHCHECK_URL` is on GitHub Actions and the live `cloudmeet-cron` worker.
 - Check went **Up**; Al received the test notification email.
 
@@ -79,7 +79,7 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 
 ## Recommended next
 
-1. Fix [issue #10](https://github.com/alabut/CloudMeet/issues/10) before implementing [feature #11](https://github.com/alabut/CloudMeet/issues/11) and its [confirmed booking rules](BOOKING-RULES-SPEC.md).
+1. Review and merge the local [issue #10](https://github.com/alabut/CloudMeet/issues/10) fail-closed calendar fix before implementing [feature #11](https://github.com/alabut/CloudMeet/issues/11) and its [confirmed booking rules](BOOKING-RULES-SPEC.md).
 2. Keep [issue #8](https://github.com/alabut/CloudMeet/issues/8), the automated production test gate, in view before any production release.
 3. Investigate [issue #12](https://github.com/alabut/CloudMeet/issues/12), the optional host SMS alert, after the core booking rules.
 

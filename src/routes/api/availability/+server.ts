@@ -13,6 +13,7 @@ import { getBusyTimes, getValidAccessToken } from '$lib/server/google-calendar';
 import { getOutlookBusyTimes, getValidOutlookAccessToken } from '$lib/server/outlook-calendar';
 import { getDayCacheKey } from '$lib/server/availability-cache';
 import { generateAvailableSlots, type TimeSlot } from '$lib/server/availability-slots';
+import { calendarOutageBody, signalCalendarHealthcheckFailure } from '$lib/server/calendar-outage';
 
 export const GET: RequestHandler = async ({ url, platform }) => {
 	const env = platform?.env;
@@ -118,7 +119,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 				busySlots.push(...googleBusy);
 			} catch (err) {
 				console.error('Error fetching Google Calendar busy times:', err);
-				// Continue without Google Calendar data if there's an error
+				await signalCalendarHealthcheckFailure(env);
+				return json(calendarOutageBody(), { status: 503 });
 			}
 		}
 

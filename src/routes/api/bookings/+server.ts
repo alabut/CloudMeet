@@ -5,7 +5,7 @@
 
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createCalendarEvent, getValidAccessToken } from '$lib/server/google-calendar';
+import { createCalendarEvent, getBusyTimes, getValidAccessToken } from '$lib/server/google-calendar';
 import { createOutlookCalendarEvent, getValidOutlookAccessToken } from '$lib/server/outlook-calendar';
 import { sendBookingEmail, sendAdminNotificationEmail, getEmailTemplates, isEmailEnabled, type EmailTemplateType } from '$lib/server/email';
 import { isValidEmail, validateLength, validateFields, MAX_LENGTHS } from '$lib/server/validation';
@@ -13,6 +13,7 @@ import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
 import { buildCalendarEventDescription } from '$lib/server/calendar-event-description';
 import { getConfiguredZoomMeetingUrl } from '$lib/server/zoom';
 import { meetingJoinLabel, meetingTypeForInviteCalendar } from '$lib/meeting';
+import { calendarOutageBody, signalCalendarHealthcheckFailure } from '$lib/server/calendar-outage';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const env = platform?.env;
@@ -87,16 +88,20 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		}
 
 		const eventType = await db
-			.prepare('SELECT id, name, duration_minutes as duration, description, invite_calendar FROM event_types WHERE user_id = ? AND slug = ? AND is_active = 1')
+			.prepare('SELECT id, name, duration_minutes as duration, description, availability_calendars, invite_calendar FROM event_types WHERE user_id = ? AND slug = ? AND is_active = 1')
 			.bind(user.id, eventSlug)
-			.first<{ id: string; name: string; duration: number; description: string; invite_calendar: string | null }>();
+			.first<{ id: string; name: string; duration: number; description: string; availability_calendars: string | null; invite_calendar: string | null }>();
 
 		if (!eventType) {
 			throw error(404, 'Event type not found or inactive');
 		}
 
 		// Parse user settings for global calendar defaults
-		let userSettings: { defaultInviteCalendar?: string } = {};
+		let userSettings: {
+			defaultAvailabilityCalendars?: string;
+			defaultInviteCalendar?: string;
+			selectedGoogleCalendars?: string[];
+		} = {};
 		try {
 			userSettings = user.settings ? JSON.parse(user.settings) : {};
 		} catch {
@@ -134,6 +139,31 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			throw error(409, 'This time slot is no longer available');
 		}
 
+		const availabilityCalendars = eventType.availability_calendars || userSettings.defaultAvailabilityCalendars || 'both';
+		const useGoogleCalendar = availabilityCalendars === 'google' || availabilityCalendars === 'both';
+		let googleAccessToken: string | null = null;
+
+		if (useGoogleCalendar) {
+			try {
+				googleAccessToken = await getValidAccessToken(
+					db,
+					user.id,
+					env.GOOGLE_CLIENT_ID,
+					env.GOOGLE_CLIENT_SECRET
+				);
+				const selectedCalendars = userSettings.selectedGoogleCalendars;
+				const googleBusy = await getBusyTimes(googleAccessToken, startDateTime, endDateTime, selectedCalendars);
+				if (googleBusy.length > 0) {
+					throw error(409, 'This time slot is no longer available');
+				}
+			} catch (err: any) {
+				if (err?.status === 409) throw err;
+				console.error('Error revalidating Google Calendar availability:', err);
+				await signalCalendarHealthcheckFailure(env);
+				return json(calendarOutageBody(), { status: 503 });
+			}
+		}
+
 		// Create calendar event in the selected calendar only (one calendar sends the invite)
 		let googleEventId: string | null = null;
 		let outlookEventId: string | null = null;
@@ -162,7 +192,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			});
 
 			try {
-				const accessToken = await getValidAccessToken(
+				const accessToken = googleAccessToken ?? await getValidAccessToken(
 					db,
 					user.id,
 					env.GOOGLE_CLIENT_ID,

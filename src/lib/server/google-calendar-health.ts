@@ -1,8 +1,8 @@
 /**
- * Probe whether the stored Google refresh token can still mint an access token.
+ * Probe whether the stored Google refresh token can still read Calendar data.
  */
 
-import { getValidAccessToken } from './google-calendar';
+import { getValidAccessToken, readPrimaryCalendar } from './google-calendar';
 
 export type GoogleCalendarHealth =
 	| { ok: true }
@@ -24,7 +24,8 @@ export async function probeGoogleCalendarHealth(
 	}
 
 	try {
-		await getValidAccessToken(db, userId, clientId, clientSecret);
+		const accessToken = await getValidAccessToken(db, userId, clientId, clientSecret);
+		await readPrimaryCalendar(accessToken);
 		return { ok: true };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);

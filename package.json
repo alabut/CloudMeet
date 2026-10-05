@@ -14,6 +14,7 @@
     "deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare",
     "prebuild": "node scripts/prebuild.js",
     "check:dashboard": "node scripts/dev-dashboard-check.mjs",
+    "test:calendar-fail-closed": "node --experimental-strip-types --test tests/regression/calendar-fail-closed.test.mjs",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "test:visual:ui": "playwright test --ui",

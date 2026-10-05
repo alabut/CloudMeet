@@ -21,6 +21,10 @@ export interface BusySlot {
 export interface FreeBusyResponse {
 	calendars: {
 		[calendarId: string]: {
+			errors?: Array<{
+				domain?: string;
+				reason?: string;
+			}>;
 			busy: Array<{
 				start: string;
 				end: string;
@@ -116,7 +120,15 @@ export async function getBusyTimes(
 	// Aggregate busy times from all calendars
 	const allBusy: BusySlot[] = [];
 	for (const calendarId of idsToQuery) {
-		const busy = data.calendars[calendarId]?.busy || [];
+		const calendar = data.calendars?.[calendarId];
+		if (!calendar) {
+			throw new Error(`Failed to verify calendar availability: missing FreeBusy result for ${calendarId}`);
+		}
+		if (calendar.errors?.length) {
+			const reasons = calendar.errors.map(calendarError => calendarError.reason || 'unknown').join(', ');
+			throw new Error(`Failed to verify calendar availability for ${calendarId}: ${reasons}`);
+		}
+		const busy = calendar.busy || [];
 		allBusy.push(...busy);
 	}
 
@@ -254,6 +266,25 @@ export async function cancelCalendarEvent(
 	if (!response.ok) {
 		const error = await response.text();
 		throw new Error(`Failed to cancel calendar event: ${error}`);
+	}
+}
+
+/**
+ * Read the primary calendar to prove authenticated Calendar API access.
+ */
+export async function readPrimaryCalendar(accessToken: string): Promise<void> {
+	const response = await fetch(
+		'https://www.googleapis.com/calendar/v3/calendars/primary',
+		{
+			headers: {
+				Authorization: `Bearer ${accessToken}`
+			}
+		}
+	);
+
+	if (!response.ok) {
+		const calendarError = await response.text();
+		throw new Error(`Failed to read primary calendar: ${calendarError}`);
 	}
 }
 
