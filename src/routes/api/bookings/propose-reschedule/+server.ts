@@ -6,6 +6,19 @@
 import { json, error, type RequestEvent } from '@sveltejs/kit';
 import { getCurrentUser } from '$lib/server/auth';
 import { getEmailTemplates, isEmailEnabled } from '$lib/server/email';
+import { getPrimaryCalendarEvents, getValidAccessToken } from '$lib/server/google-calendar';
+import { createDateInTimezone } from '$lib/server/availability-slots';
+import {
+	addCalendarDays,
+	assertStartInBookingWindow,
+	claimPacificDateReservation,
+	formatPacificDate,
+	isPacificDateConsumed,
+	PACIFIC_TIMEZONE,
+	releaseBookingDateReservations
+} from '$lib/server/booking-rules';
+import { getPrimaryBlackoutDates } from '$lib/server/primary-calendar-blackouts';
+import { calendarOutageBody, signalCalendarHealthcheckFailure } from '$lib/server/calendar-outage';
 
 export const POST = async (event: RequestEvent) => {
 	const env = event.platform?.env;
@@ -78,24 +91,92 @@ export const POST = async (event: RequestEvent) => {
 			throw error(400, 'Only confirmed bookings can be rescheduled');
 		}
 
+		assertStartInBookingWindow(proposedStartTime);
+		const sourcePacificDate = formatPacificDate(new Date(booking.start_time));
+		const destinationPacificDate = formatPacificDate(new Date(proposedStartTime));
+		if (
+			destinationPacificDate !== sourcePacificDate &&
+			await isPacificDateConsumed(db, booking.user_id, destinationPacificDate, { excludeBookingId: bookingId })
+		) {
+			throw error(409, 'This date is no longer available');
+		}
+
+		try {
+			const accessToken = await getValidAccessToken(
+				db,
+				booking.user_id,
+				env.GOOGLE_CLIENT_ID,
+				env.GOOGLE_CLIENT_SECRET
+			);
+			const availabilityRules = await db
+				.prepare(
+					`SELECT start_time, end_time
+					FROM availability_rules
+					WHERE user_id = ? AND day_of_week = ?
+					ORDER BY start_time`
+				)
+				.bind(booking.user_id, new Date(`${destinationPacificDate}T00:00:00`).getDay())
+				.all<{ start_time: string; end_time: string }>();
+			const primaryEvents = await getPrimaryCalendarEvents(
+				accessToken,
+				createDateInTimezone(destinationPacificDate, '00:00', PACIFIC_TIMEZONE),
+				createDateInTimezone(addCalendarDays(destinationPacificDate, 1), '00:00', PACIFIC_TIMEZONE)
+			);
+			const blackoutDates = getPrimaryBlackoutDates({
+				events: primaryEvents,
+				rulesByDate: new Map([[destinationPacificDate, availabilityRules.results || []]])
+			});
+			if (blackoutDates.has(destinationPacificDate)) {
+				throw error(409, 'This date is no longer available');
+			}
+		} catch (err: any) {
+			if (err?.status === 409) throw err;
+			console.error('Error revalidating primary calendar for proposal:', err);
+			await signalCalendarHealthcheckFailure(env);
+			return json(calendarOutageBody(), { status: 503 });
+		}
+
 		// Generate a unique response token
+		const proposalId = crypto.randomUUID();
 		const responseToken = crypto.randomUUID();
+		let destinationReservationClaimed = false;
 
 		// Create reschedule proposal
-		await db
-			.prepare(
-				`INSERT INTO reschedule_proposals
-				(booking_id, proposed_start_time, proposed_end_time, message, proposed_by, response_token, expires_at)
-				VALUES (?, ?, ?, ?, 'host', ?, datetime('now', '+7 days'))`
-			)
-			.bind(bookingId, proposedStartTime, proposedEndTime, message || null, responseToken)
-			.run();
+		try {
+			await db
+				.prepare(
+					`INSERT INTO reschedule_proposals
+					(id, booking_id, proposed_start_time, proposed_end_time, message, proposed_by, response_token, expires_at)
+					VALUES (?, ?, ?, ?, ?, 'host', ?, datetime('now', '+7 days'))`
+				)
+				.bind(proposalId, bookingId, proposedStartTime, proposedEndTime, message || null, responseToken)
+				.run();
 
-		// Mark original booking as having a pending proposal
-		await db
-			.prepare(`UPDATE bookings SET status = 'rescheduled' WHERE id = ?`)
-			.bind(bookingId)
-			.run();
+			if (destinationPacificDate !== sourcePacificDate) {
+				await claimPacificDateReservation(db, {
+					userId: booking.user_id,
+					pacificDate: destinationPacificDate,
+					proposalId,
+					kind: 'proposal'
+				});
+				destinationReservationClaimed = true;
+			}
+
+			// Mark original booking as having a pending proposal
+			await db
+				.prepare(`UPDATE bookings SET status = 'rescheduled' WHERE id = ?`)
+				.bind(bookingId)
+				.run();
+		} catch (err) {
+			if (destinationReservationClaimed) {
+				await releaseBookingDateReservations(db, { proposalId });
+			}
+			await db
+				.prepare(`DELETE FROM reschedule_proposals WHERE id = ?`)
+				.bind(proposalId)
+				.run();
+			throw err;
+		}
 
 		// Send email to attendee with proposal
 		if (env.EMAILIT_API_KEY) {

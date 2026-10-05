@@ -102,6 +102,31 @@ CREATE INDEX idx_bookings_event_type ON bookings(event_type_id);
 CREATE INDEX idx_bookings_status ON bookings(status);
 CREATE INDEX idx_bookings_google_event ON bookings(google_event_id);
 
+-- One active CloudMeet date claim per host-local Pacific date.
+-- Legacy booking rows are still read directly by the app because SQLite/D1
+-- cannot safely derive America/Los_Angeles dates from stored UTC strings.
+CREATE TABLE IF NOT EXISTS booking_date_reservations (
+    id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+    user_id TEXT NOT NULL,
+    pacific_date DATE NOT NULL,
+    booking_id TEXT,
+    proposal_id TEXT,
+    kind TEXT NOT NULL CHECK (kind IN ('booking', 'proposal')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    released_at DATETIME,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX idx_booking_date_reservations_active_date
+ON booking_date_reservations(user_id, pacific_date)
+WHERE released_at IS NULL;
+
+CREATE INDEX idx_booking_date_reservations_booking
+ON booking_date_reservations(booking_id);
+
+CREATE INDEX idx_booking_date_reservations_proposal
+ON booking_date_reservations(proposal_id);
+
 -- Cache control table (fallback when KV is unavailable)
 CREATE TABLE IF NOT EXISTS cache_control (
     key TEXT PRIMARY KEY,

@@ -5,7 +5,7 @@
 
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createCalendarEvent, getBusyTimes, getValidAccessToken } from '$lib/server/google-calendar';
+import { createCalendarEvent, getBusyTimes, getPrimaryCalendarEvents, getValidAccessToken } from '$lib/server/google-calendar';
 import { createOutlookCalendarEvent, getValidOutlookAccessToken } from '$lib/server/outlook-calendar';
 import { sendBookingEmail, sendAdminNotificationEmail, getEmailTemplates, isEmailEnabled, type EmailTemplateType } from '$lib/server/email';
 import { isValidEmail, validateLength, validateFields, MAX_LENGTHS } from '$lib/server/validation';
@@ -14,6 +14,16 @@ import { buildCalendarEventDescription } from '$lib/server/calendar-event-descri
 import { getConfiguredZoomMeetingUrl } from '$lib/server/zoom';
 import { meetingJoinLabel, meetingTypeForInviteCalendar } from '$lib/meeting';
 import { calendarOutageBody, signalCalendarHealthcheckFailure } from '$lib/server/calendar-outage';
+import { createDateInTimezone } from '$lib/server/availability-slots';
+import {
+	addCalendarDays,
+	assertStartInBookingWindow,
+	claimPacificDateReservation,
+	formatPacificDate,
+	isPacificDateConsumed,
+	PACIFIC_TIMEZONE
+} from '$lib/server/booking-rules';
+import { getPrimaryBlackoutDates } from '$lib/server/primary-calendar-blackouts';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
 	const env = platform?.env;
@@ -117,9 +127,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			inviteCalendar = 'google'; // Fall back to Google
 		}
 
-		// Verify slot is still available
+		// Verify slot is still inside the rolling public booking window.
 		const startDateTime = new Date(startTime);
 		const endDateTime = new Date(endTime);
+		assertStartInBookingWindow(startTime);
+		const pacificDate = formatPacificDate(startDateTime);
 
 		// Check for conflicts with existing bookings
 		const conflict = await db
@@ -139,29 +151,57 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			throw error(409, 'This time slot is no longer available');
 		}
 
+		if (await isPacificDateConsumed(db, user.id, pacificDate)) {
+			throw error(409, 'This date is no longer available');
+		}
+
 		const availabilityCalendars = eventType.availability_calendars || userSettings.defaultAvailabilityCalendars || 'both';
 		const useGoogleCalendar = availabilityCalendars === 'google' || availabilityCalendars === 'both';
 		let googleAccessToken: string | null = null;
 
-		if (useGoogleCalendar) {
-			try {
-				googleAccessToken = await getValidAccessToken(
-					db,
-					user.id,
-					env.GOOGLE_CLIENT_ID,
-					env.GOOGLE_CLIENT_SECRET
-				);
+		try {
+			googleAccessToken = await getValidAccessToken(
+				db,
+				user.id,
+				env.GOOGLE_CLIENT_ID,
+				env.GOOGLE_CLIENT_SECRET
+			);
+
+			const availabilityRules = await db
+				.prepare(
+					`SELECT start_time, end_time
+					FROM availability_rules
+					WHERE user_id = ? AND day_of_week = ?
+					ORDER BY start_time`
+				)
+				.bind(user.id, new Date(`${pacificDate}T00:00:00`).getDay())
+				.all<{ start_time: string; end_time: string }>();
+
+			const primaryEvents = await getPrimaryCalendarEvents(
+				googleAccessToken,
+				createDateInTimezone(pacificDate, '00:00', PACIFIC_TIMEZONE),
+				createDateInTimezone(addCalendarDays(pacificDate, 1), '00:00', PACIFIC_TIMEZONE)
+			);
+			const blackoutDates = getPrimaryBlackoutDates({
+				events: primaryEvents,
+				rulesByDate: new Map([[pacificDate, availabilityRules.results || []]])
+			});
+			if (blackoutDates.has(pacificDate)) {
+				throw error(409, 'This date is no longer available');
+			}
+
+			if (useGoogleCalendar) {
 				const selectedCalendars = userSettings.selectedGoogleCalendars;
 				const googleBusy = await getBusyTimes(googleAccessToken, startDateTime, endDateTime, selectedCalendars);
 				if (googleBusy.length > 0) {
 					throw error(409, 'This time slot is no longer available');
 				}
-			} catch (err: any) {
-				if (err?.status === 409) throw err;
-				console.error('Error revalidating Google Calendar availability:', err);
-				await signalCalendarHealthcheckFailure(env);
-				return json(calendarOutageBody(), { status: 503 });
 			}
+		} catch (err: any) {
+			if (err?.status === 409) throw err;
+			console.error('Error revalidating Google Calendar availability:', err);
+			await signalCalendarHealthcheckFailure(env);
+			return json(calendarOutageBody(), { status: 503 });
 		}
 
 		// Create calendar event in the selected calendar only (one calendar sends the invite)
@@ -174,129 +214,152 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		// included in the calendar invite description (the booking row itself
 		// isn't inserted until after the calendar event is created below).
 		const bookingId = crypto.randomUUID();
+		let dateReservationClaimed = false;
 
-		if (inviteCalendar === 'google') {
-			// Google Calendar invite + recurring Zoom link (no Google Meet conference)
-			const zoomUrl = getConfiguredZoomMeetingUrl(env);
-			meetingUrl = zoomUrl;
+		await claimPacificDateReservation(db, {
+			userId: user.id,
+			pacificDate,
+			bookingId,
+			kind: 'booking'
+		});
+		dateReservationClaimed = true;
 
-			const calendarDescription = buildCalendarEventDescription({
-				eventDescription: eventType.description,
-				attendeeName,
-				attendeeEmail,
-				attendeeNotes: notes,
-				bookingId,
-				appUrl: env.APP_URL,
-				meetingUrl: zoomUrl,
-				meetingJoinLabel: meetingJoinLabel('zoom')
-			});
+		try {
+			if (inviteCalendar === 'google') {
+				// Google Calendar invite + recurring Zoom link (no Google Meet conference)
+				const zoomUrl = getConfiguredZoomMeetingUrl(env);
+				meetingUrl = zoomUrl;
 
-			try {
-				const accessToken = googleAccessToken ?? await getValidAccessToken(
-					db,
-					user.id,
-					env.GOOGLE_CLIENT_ID,
-					env.GOOGLE_CLIENT_SECRET
-				);
-
-				const calendarEvent = await createCalendarEvent(accessToken, {
-					summary: `${eventType.name} with ${attendeeName}`,
-					description: calendarDescription,
-					location: zoomUrl,
-					start: {
-						dateTime: startDateTime.toISOString(),
-						timeZone: 'UTC'
-					},
-					end: {
-						dateTime: endDateTime.toISOString(),
-						timeZone: 'UTC'
-					},
-					attendees: [
-						{ email: attendeeEmail }
-					]
+				const calendarDescription = buildCalendarEventDescription({
+					eventDescription: eventType.description,
+					attendeeName,
+					attendeeEmail,
+					attendeeNotes: notes,
+					bookingId,
+					appUrl: env.APP_URL,
+					meetingUrl: zoomUrl,
+					meetingJoinLabel: meetingJoinLabel('zoom')
 				});
 
-				googleEventId = calendarEvent.id;
-			} catch (err) {
-				console.error('Error creating Google Calendar event:', err);
-				const detail = err instanceof Error ? err.message : String(err);
-				if (detail.includes('invalid_grant') || detail.includes('expired or revoked')) {
+				try {
+					const accessToken = googleAccessToken ?? await getValidAccessToken(
+						db,
+						user.id,
+						env.GOOGLE_CLIENT_ID,
+						env.GOOGLE_CLIENT_SECRET
+					);
+
+					const calendarEvent = await createCalendarEvent(accessToken, {
+						summary: `${eventType.name} with ${attendeeName}`,
+						description: calendarDescription,
+						location: zoomUrl,
+						start: {
+							dateTime: startDateTime.toISOString(),
+							timeZone: 'UTC'
+						},
+						end: {
+							dateTime: endDateTime.toISOString(),
+							timeZone: 'UTC'
+						},
+						attendees: [
+							{ email: attendeeEmail }
+						]
+					});
+
+					googleEventId = calendarEvent.id;
+				} catch (err) {
+					console.error('Error creating Google Calendar event:', err);
+					const detail = err instanceof Error ? err.message : String(err);
+					if (detail.includes('invalid_grant') || detail.includes('expired or revoked')) {
+						throw error(
+							503,
+							'Google Calendar access expired. The host needs to reconnect Google before this time can be booked.'
+						);
+					}
 					throw error(
 						503,
-						'Google Calendar access expired. The host needs to reconnect Google before this time can be booked.'
+						'Could not create the Google Calendar invitation. Please try again in a moment.'
 					);
 				}
-				throw error(
-					503,
-					'Could not create the Google Calendar invitation. Please try again in a moment.'
-				);
-			}
-		} else if (inviteCalendar === 'outlook' && env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET) {
-			const calendarDescription = buildCalendarEventDescription({
-				eventDescription: eventType.description,
-				attendeeName,
-				attendeeEmail,
-				attendeeNotes: notes,
-				bookingId,
-				appUrl: env.APP_URL
-			});
-			// Create Outlook Calendar event with Teams meeting
-			try {
-				const outlookToken = await getValidOutlookAccessToken(
-					db,
-					user.id,
-					env.MICROSOFT_CLIENT_ID,
-					env.MICROSOFT_CLIENT_SECRET
-				);
-
-				const outlookEvent = await createOutlookCalendarEvent(outlookToken, {
-					summary: `${eventType.name} with ${attendeeName}`,
-					description: calendarDescription,
-					startTime: startDateTime.toISOString(),
-					endTime: endDateTime.toISOString(),
+			} else if (inviteCalendar === 'outlook' && env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET) {
+				const calendarDescription = buildCalendarEventDescription({
+					eventDescription: eventType.description,
+					attendeeName,
 					attendeeEmail,
-					hostEmail: user.email,
-					createTeamsMeeting: true
+					attendeeNotes: notes,
+					bookingId,
+					appUrl: env.APP_URL
 				});
+				// Create Outlook Calendar event with Teams meeting
+				try {
+					const outlookToken = await getValidOutlookAccessToken(
+						db,
+						user.id,
+						env.MICROSOFT_CLIENT_ID,
+						env.MICROSOFT_CLIENT_SECRET
+					);
 
-				outlookEventId = outlookEvent.id;
-				if (outlookEvent.onlineMeeting?.joinUrl) {
-					meetingUrl = outlookEvent.onlineMeeting.joinUrl;
+					const outlookEvent = await createOutlookCalendarEvent(outlookToken, {
+						summary: `${eventType.name} with ${attendeeName}`,
+						description: calendarDescription,
+						startTime: startDateTime.toISOString(),
+						endTime: endDateTime.toISOString(),
+						attendeeEmail,
+						hostEmail: user.email,
+						createTeamsMeeting: true
+					});
+
+					outlookEventId = outlookEvent.id;
+					if (outlookEvent.onlineMeeting?.joinUrl) {
+						meetingUrl = outlookEvent.onlineMeeting.joinUrl;
+					}
+				} catch (err) {
+					console.error('Error creating Outlook Calendar event:', err);
+					throw error(
+						503,
+						'Could not create the Outlook calendar invitation. Please try again in a moment.'
+					);
 				}
-			} catch (err) {
-				console.error('Error creating Outlook Calendar event:', err);
-				throw error(
-					503,
-					'Could not create the Outlook calendar invitation. Please try again in a moment.'
-				);
+			} else if (inviteCalendar === 'outlook') {
+				throw error(503, 'Outlook Calendar is selected but not configured.');
 			}
-		} else if (inviteCalendar === 'outlook') {
-			throw error(503, 'Outlook Calendar is selected but not configured.');
-		}
 
-		// Create booking in database
-		await db
-			.prepare(
-				`INSERT INTO bookings (
-					id, user_id, event_type_id, start_time, end_time,
-					attendee_name, attendee_email, attendee_notes, status,
-					google_event_id, outlook_event_id, meeting_url, created_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, CURRENT_TIMESTAMP)`
-			)
-			.bind(
-				bookingId,
-				user.id,
-				eventType.id,
-				startTime,
-				endTime,
-				attendeeName,
-				attendeeEmail,
-				notes || null,
-				googleEventId,
-				outlookEventId,
-				meetingUrl
-			)
-			.run();
+			// Create booking in database
+			await db
+				.prepare(
+					`INSERT INTO bookings (
+						id, user_id, event_type_id, start_time, end_time,
+						attendee_name, attendee_email, attendee_notes, status,
+						google_event_id, outlook_event_id, meeting_url, created_at
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, CURRENT_TIMESTAMP)`
+				)
+				.bind(
+					bookingId,
+					user.id,
+					eventType.id,
+					startTime,
+					endTime,
+					attendeeName,
+					attendeeEmail,
+					notes || null,
+					googleEventId,
+					outlookEventId,
+					meetingUrl
+				)
+				.run();
+		} catch (err) {
+			if (dateReservationClaimed) {
+				await db
+					.prepare(
+						`UPDATE booking_date_reservations
+						SET released_at = CURRENT_TIMESTAMP
+						WHERE booking_id = ? AND released_at IS NULL`
+					)
+					.bind(bookingId)
+					.run();
+			}
+			throw err;
+		}
 
 		// Invalidate availability cache (both month grid and per-day slots)
 		await invalidateAvailabilityCache(env.KV);

@@ -53,7 +53,7 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 - Bookings/reschedules **fail (503)** if Google/Outlook cannot create the invite — no fake success.
 - Dashboard probes Google token: amber reconnect banner if dead; **green “connected”** line if healthy (after `1eaf4fc`).
 - Cron worker (`cloudmeet-cron`, every 5 min) hits `/api/cron/send-reminders` and `/api/cron/health`.
-- The scheduled Google health probe now refreshes access and performs an authenticated FreeBusy read of Google primary before reporting healthy. Public day/month availability and booking-submission Google read failures return a machine-readable `calendar_unavailable` outage response; direct Healthchecks pings require `HEALTHCHECK_URL` in Pages, which is not yet verified. Valid empty availability remains a separate public state. See [BOOKING-RULES-SPEC.md](BOOKING-RULES-SPEC.md).
+- The scheduled Google health probe now refreshes access and performs an authenticated Events API read of Google primary before reporting healthy. Public day/month availability and booking-submission Google read failures return a machine-readable `calendar_unavailable` outage response; direct Healthchecks pings require `HEALTHCHECK_URL` in Pages, which is not yet verified. Valid empty availability remains a separate public state. Local issue #11 work adds rolling-window enforcement, primary whole-day blackout reads, and D1 Pacific-date reservations; deploy requires migration `0009`. See [BOOKING-RULES-SPEC.md](BOOKING-RULES-SPEC.md).
 - Health endpoint can Emailit-alert (unused — no real Emailit keys). Worker now pings optional **`HEALTHCHECK_URL`** (success vs `{url}/fail`) for a watchdog.
 
 ### Ops / accounts (no secrets in git)

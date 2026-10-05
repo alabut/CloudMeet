@@ -5,11 +5,18 @@
 
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getBusyTimes, getValidAccessToken } from '$lib/server/google-calendar';
+import { getBusyTimes, getPrimaryCalendarEvents, getValidAccessToken } from '$lib/server/google-calendar';
 import { getOutlookBusyTimes, getValidOutlookAccessToken } from '$lib/server/outlook-calendar';
-import { getMonthCacheKey } from '$lib/server/availability-cache';
-import { generateAvailableSlots, type TimeSlot } from '$lib/server/availability-slots';
+import { generateAvailableSlots, createDateInTimezone, type TimeSlot } from '$lib/server/availability-slots';
 import { calendarOutageBody, signalCalendarHealthcheckFailure } from '$lib/server/calendar-outage';
+import {
+	addCalendarDays,
+	filterSlotsToBookingWindow,
+	getBookingWindow,
+	getConsumedPacificDates,
+	PACIFIC_TIMEZONE
+} from '$lib/server/booking-rules';
+import { getPrimaryBlackoutDates } from '$lib/server/primary-calendar-blackouts';
 
 export const GET: RequestHandler = async ({ url, platform }) => {
 	const env = platform?.env;
@@ -26,13 +33,6 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 
 	try {
 		const db = env.DB;
-
-		// Check cache first to avoid expensive DB/API calls
-		const cacheKey = await getMonthCacheKey(env.KV, eventSlug, month);
-		const cached = await env.KV.get(cacheKey);
-		if (cached) {
-			return json(JSON.parse(cached));
-		}
 
 		// Get the first (and only) user for single-user setup
 		const user = await db
@@ -100,33 +100,52 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		// see the commit message for how this was confirmed against a real
 		// Google Calendar event.
 		const rangeEnd = new Date(year, monthNum, 1);
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-
-		// Max date is 60 days from today
-		const maxDate = new Date(today.getTime() + 60 * 24 * 60 * 60 * 1000);
+		const bookingWindow = getBookingWindow();
+		const windowStartDate = bookingWindow.start;
+		const windowEndDate = bookingWindow.end;
 
 		// Get busy times from connected calendars for the entire month
 		let busySlots: TimeSlot[] = [];
+		let googleAccessToken: string | null = null;
+		const consumedDates = await getConsumedPacificDates(db, user.id);
+		const rulesByDate = new Map<string, Array<{ start_time: string; end_time: string }>>();
 
-		// Fetch Google Calendar busy times (if enabled)
-		if (useGoogleCalendar) {
-			try {
-				const accessToken = await getValidAccessToken(
-					db,
-					user.id,
-					env.GOOGLE_CLIENT_ID,
-					env.GOOGLE_CLIENT_SECRET
-				);
+		for (let day = 1; day <= lastDay.getDate(); day++) {
+			const date = new Date(year, monthNum - 1, day);
+			const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+			const rules = rulesByDay.get(date.getDay());
+			if (rules?.length) {
+				rulesByDate.set(dateStr, rules);
+			}
+		}
+
+		let primaryBlackoutDates = new Set<string>();
+
+		try {
+			googleAccessToken = await getValidAccessToken(
+				db,
+				user.id,
+				env.GOOGLE_CLIENT_ID,
+				env.GOOGLE_CLIENT_SECRET
+			);
+			const primaryEvents = await getPrimaryCalendarEvents(
+				googleAccessToken,
+				createDateInTimezone(`${year}-${String(monthNum).padStart(2, '0')}-01`, '00:00', PACIFIC_TIMEZONE),
+				createDateInTimezone(`${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, '0')}-01`, '00:00', PACIFIC_TIMEZONE)
+			);
+			primaryBlackoutDates = getPrimaryBlackoutDates({ events: primaryEvents, rulesByDate });
+
+			// Fetch Google Calendar busy times (if enabled)
+			if (useGoogleCalendar) {
 				// Use selected calendars if configured, otherwise query all
 				const selectedCalendars = userSettings.selectedGoogleCalendars;
-				const googleBusy = await getBusyTimes(accessToken, firstDay, rangeEnd, selectedCalendars);
+				const googleBusy = await getBusyTimes(googleAccessToken, firstDay, rangeEnd, selectedCalendars);
 				busySlots.push(...googleBusy);
-			} catch (err) {
-				console.error('Error fetching Google Calendar busy times:', err);
-				await signalCalendarHealthcheckFailure(env);
-				return json(calendarOutageBody(), { status: 503 });
 			}
+		} catch (err) {
+			console.error('Error fetching Google Calendar availability:', err);
+			await signalCalendarHealthcheckFailure(env);
+			return json(calendarOutageBody(), { status: 503 });
 		}
 
 		// Fetch Outlook Calendar busy times (if enabled and configured)
@@ -145,31 +164,17 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 			}
 		}
 
-		// Get existing bookings for this month
-		const bookings = await db
-			.prepare(
-				`SELECT start_time, end_time
-				FROM bookings
-				WHERE user_id = ? AND start_time >= ? AND start_time < ? AND status = 'confirmed'
-				ORDER BY start_time`
-			)
-			.bind(user.id, firstDay.toISOString(), rangeEnd.toISOString())
-			.all<{ start_time: string; end_time: string }>();
-
-		// Combine all busy slots
-		const allBusySlots = [
-			...busySlots,
-			...bookings.results.map(b => ({ start: b.start_time, end: b.end_time }))
-		];
-
 		// Check each day in the month
 		const availableDates: string[] = [];
 
 		for (let day = 1; day <= lastDay.getDate(); day++) {
 			const date = new Date(year, monthNum - 1, day);
+			const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-			// Skip dates before today or after maxDate
-			if (date < today || date > maxDate) continue;
+			const dayStart = createDateInTimezone(dateStr, '00:00', PACIFIC_TIMEZONE);
+			const nextDayStart = createDateInTimezone(addCalendarDays(dateStr, 1), '00:00', PACIFIC_TIMEZONE);
+			if (nextDayStart <= windowStartDate || dayStart >= windowEndDate) continue;
+			if (consumedDates.has(dateStr) || primaryBlackoutDates.has(dateStr)) continue;
 
 			const dayOfWeek = date.getDay();
 			const rules = rulesByDay.get(dayOfWeek);
@@ -181,23 +186,18 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 			// generator as the day endpoint (see availability-slots.ts) so a date
 			// only ever shows up here when the day endpoint would actually offer
 			// a slot for it.
-			const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-			const daySlots = generateAvailableSlots({
+			const daySlots = filterSlotsToBookingWindow(generateAvailableSlots({
 				dateStr,
 				rules,
 				timezone: userTimezone,
 				durationMinutes: eventType.duration,
-				busySlots: allBusySlots
-			});
+				busySlots
+			}));
 
 			if (daySlots.length > 0) {
 				availableDates.push(dateStr);
 			}
 		}
-
-		// Cache response in KV for 5 minutes
-		await env.KV.put(cacheKey, JSON.stringify({ availableDates }), { expirationTtl: 60 /* KV minimum. Bounds staleness when a cache-version
-			   write has not yet propagated -- see availability-cache.ts */ });
 
 		return json({ availableDates });
 	} catch (err: any) {

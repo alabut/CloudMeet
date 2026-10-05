@@ -6,9 +6,10 @@
 export interface CalendarEvent {
 	id: string;
 	summary: string;
-	start: { dateTime: string; timeZone?: string };
-	end: { dateTime: string; timeZone?: string };
+	start: { date?: string; dateTime?: string; timeZone?: string };
+	end: { date?: string; dateTime?: string; timeZone?: string };
 	status: string;
+	transparency?: string;
 	hangoutLink?: string;
 	htmlLink?: string;
 }
@@ -38,6 +39,14 @@ export interface CalendarListEntry {
 	summary: string;
 	primary?: boolean;
 	accessRole: string;
+}
+
+export interface PrimaryCalendarEvent {
+	id: string;
+	status?: string;
+	transparency?: string;
+	start: { date?: string; dateTime?: string; timeZone?: string };
+	end: { date?: string; dateTime?: string; timeZone?: string };
 }
 
 /**
@@ -137,6 +146,48 @@ export async function getBusyTimes(
 
 	// Sort and merge overlapping busy slots
 	return mergeBusySlots(allBusy);
+}
+
+export async function getPrimaryCalendarEvents(
+	accessToken: string,
+	startDate: Date,
+	endDate: Date
+): Promise<PrimaryCalendarEvent[]> {
+	const events: PrimaryCalendarEvent[] = [];
+	let pageToken: string | undefined;
+
+	do {
+		const url = new URL('https://www.googleapis.com/calendar/v3/calendars/primary/events');
+		url.searchParams.set('timeMin', startDate.toISOString());
+		url.searchParams.set('timeMax', endDate.toISOString());
+		url.searchParams.set('singleEvents', 'true');
+		url.searchParams.set('orderBy', 'startTime');
+		url.searchParams.set('showDeleted', 'false');
+		if (pageToken) {
+			url.searchParams.set('pageToken', pageToken);
+		}
+
+		const response = await fetch(url.toString(), {
+			headers: {
+				Authorization: `Bearer ${accessToken}`
+			}
+		});
+
+		if (!response.ok) {
+			const error = await response.text();
+			throw new Error(`Failed to fetch primary calendar events: ${error}`);
+		}
+
+		const data = await response.json() as {
+			items?: PrimaryCalendarEvent[];
+			nextPageToken?: string;
+		};
+
+		events.push(...(data.items || []));
+		pageToken = data.nextPageToken;
+	} while (pageToken);
+
+	return events;
 }
 
 /**

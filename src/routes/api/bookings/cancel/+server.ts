@@ -124,7 +124,8 @@ export const POST = async (event: RequestEvent) => {
 			.bind(bookingId)
 			.run();
 
-		// Cancelling frees up the slot, so both availability caches are stale
+		// Cancellation changes booking state and availability responses, even
+		// though the Pacific date remains consumed.
 		await invalidateAvailabilityCache(env.KV);
 
 		// Send cancellation email if enabled

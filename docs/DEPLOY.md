@@ -48,7 +48,7 @@ id = "7938d855d8824edea85202d9b5107743"
 
 ## 4. Schema + migrations on production D1
 
-Applied once already. Re-run the migrations loop any time `schema.sql` or `migrations/` changes:
+Applied once already through migration `0008`. Re-run the migrations loop any time `schema.sql` or `migrations/` changes. The next authorized deploy after issue #11 must apply `migrations/0009_booking_date_reservations.sql`; this task intentionally did not run remote D1 commands.
 
 ```bash
 npx wrangler d1 execute cloudmeet --remote --file=./schema.sql
@@ -57,7 +57,7 @@ for m in migrations/*.sql; do
 done
 ```
 
-Several migration files report "duplicate column" errors on a fresh apply — expected, see `SETUP-NOTES.md`; `schema.sql` already includes most of what they add.
+Several migration files report "duplicate column" errors on a fresh apply — expected, see `SETUP-NOTES.md`; `schema.sql` already includes most of what they add. Migration `0009` adds `booking_date_reservations` and a partial unique active-date index. It intentionally does not backfill legacy booking rows in SQL because D1/SQLite cannot safely derive `America/Los_Angeles` dates from UTC strings; application code preserves those occupied dates.
 
 ## 5. Production secrets
 

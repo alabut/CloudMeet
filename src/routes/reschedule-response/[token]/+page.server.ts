@@ -5,11 +5,23 @@
 
 import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import { createCalendarEvent, cancelCalendarEvent, getValidAccessToken } from '$lib/server/google-calendar';
+import { createCalendarEvent, cancelCalendarEvent, getPrimaryCalendarEvents, getValidAccessToken } from '$lib/server/google-calendar';
 import { sendAdminRescheduleNotification, sendAdminCancellationNotification } from '$lib/server/email';
 import { buildCalendarEventDescription } from '$lib/server/calendar-event-description';
 import { getConfiguredZoomMeetingUrl } from '$lib/server/zoom';
 import { meetingJoinLabel } from '$lib/meeting';
+import { createDateInTimezone } from '$lib/server/availability-slots';
+import {
+	addCalendarDays,
+	assertStartInBookingWindow,
+	claimPacificDateReservation,
+	formatPacificDate,
+	PACIFIC_TIMEZONE,
+	releaseBookingDateReservations,
+	transferProposalReservationToBooking
+} from '$lib/server/booking-rules';
+import { getPrimaryBlackoutDates } from '$lib/server/primary-calendar-blackouts';
+import { signalCalendarHealthcheckFailure } from '$lib/server/calendar-outage';
 import {
 	getProposalPreviewRecord,
 	isLocalPreviewProposal,
@@ -171,6 +183,75 @@ export const actions: Actions = {
 				return fail(400, { error: 'Proposal already responded to or expired' });
 			}
 
+			assertStartInBookingWindow(proposal.proposed_start_time);
+			const sourcePacificDate = formatPacificDate(new Date(proposal.original_start_time));
+			const destinationPacificDate = formatPacificDate(new Date(proposal.proposed_start_time));
+
+			try {
+				const accessToken = await getValidAccessToken(
+					db,
+					proposal.user_id,
+					env.GOOGLE_CLIENT_ID,
+					env.GOOGLE_CLIENT_SECRET
+				);
+				const availabilityRules = await db
+					.prepare(
+						`SELECT start_time, end_time
+						FROM availability_rules
+						WHERE user_id = ? AND day_of_week = ?
+						ORDER BY start_time`
+					)
+					.bind(proposal.user_id, new Date(`${destinationPacificDate}T00:00:00`).getDay())
+					.all<{ start_time: string; end_time: string }>();
+				const primaryEvents = await getPrimaryCalendarEvents(
+					accessToken,
+					createDateInTimezone(destinationPacificDate, '00:00', PACIFIC_TIMEZONE),
+					createDateInTimezone(addCalendarDays(destinationPacificDate, 1), '00:00', PACIFIC_TIMEZONE)
+				);
+				const blackoutDates = getPrimaryBlackoutDates({
+					events: primaryEvents,
+					rulesByDate: new Map([[destinationPacificDate, availabilityRules.results || []]])
+				});
+				if (blackoutDates.has(destinationPacificDate)) {
+					return fail(409, { error: 'This date is no longer available' });
+				}
+			} catch (err) {
+				console.error('Failed to verify primary calendar before accepting proposal:', err);
+				await signalCalendarHealthcheckFailure(env);
+				return fail(503, {
+					error:
+						'Availability is temporarily unavailable because the host calendar could not be checked. Please try again soon.'
+				});
+			}
+
+			if (destinationPacificDate !== sourcePacificDate) {
+				const existingReservation = await db
+					.prepare(
+						`SELECT id, booking_id, proposal_id
+						FROM booking_date_reservations
+						WHERE user_id = ? AND pacific_date = ? AND released_at IS NULL`
+					)
+					.bind(proposal.user_id, destinationPacificDate)
+					.first<{ id: string; booking_id: string | null; proposal_id: string | null }>();
+
+				if (
+					existingReservation &&
+					existingReservation.proposal_id !== proposal.id &&
+					existingReservation.booking_id !== proposal.booking_id
+				) {
+					return fail(409, { error: 'This date is no longer available' });
+				}
+
+				if (!existingReservation) {
+					await claimPacificDateReservation(db, {
+						userId: proposal.user_id,
+						pacificDate: destinationPacificDate,
+						bookingId: proposal.booking_id,
+						kind: 'booking'
+					});
+				}
+			}
+
 			// Cancel old Google Calendar event if exists
 			if (proposal.google_event_id) {
 				try {
@@ -255,6 +336,17 @@ export const actions: Actions = {
 				)
 				.bind(proposal.id)
 				.run();
+
+			if (destinationPacificDate !== sourcePacificDate) {
+				await transferProposalReservationToBooking(db, {
+					proposalId: proposal.id,
+					bookingId: proposal.booking_id
+				});
+				await releaseBookingDateReservations(db, {
+					bookingId: proposal.booking_id,
+					pacificDate: sourcePacificDate
+				});
+			}
 
 			// Send admin notification about accepted reschedule
 			if (env.EMAILIT_API_KEY) {
@@ -388,6 +480,8 @@ export const actions: Actions = {
 				)
 				.bind(proposal.id)
 				.run();
+
+			await releaseBookingDateReservations(db, { proposalId: proposal.id });
 
 			if (env.EMAILIT_API_KEY) {
 				try {

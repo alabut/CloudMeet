@@ -275,10 +275,14 @@ test('booking submission revalidates Google availability before invite creation 
 	const env = makeEnv(db);
 	const fetches = [];
 	let createInviteCalls = 0;
+	const start = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+	start.setUTCHours(18, 0, 0, 0);
+	const end = new Date(start.getTime() + 30 * 60 * 1000);
 	const restore = installFetchMock(async (url, init) => {
 		const href = String(url);
 		fetches.push(href);
 		if (href.includes('/token')) return jsonResponse({ access_token: 'access-token' });
+		if (href.includes('/calendars/primary/events')) return jsonResponse({ items: [] });
 		if (href.includes('/freeBusy')) return textResponse('calendar unavailable', { status: 503 });
 		if (href.includes('/events') && init?.method === 'POST') {
 			createInviteCalls += 1;
@@ -293,8 +297,8 @@ test('booking submission revalidates Google availability before invite creation 
 			method: 'POST',
 			body: JSON.stringify({
 				eventSlug: '30min',
-				startTime: '2030-01-07T10:00:00.000Z',
-				endTime: '2030-01-07T10:30:00.000Z',
+				startTime: start.toISOString(),
+				endTime: end.toISOString(),
 				attendeeName: 'Booker',
 				attendeeEmail: 'booker@example.com'
 			})
@@ -310,15 +314,15 @@ test('booking submission revalidates Google availability before invite creation 
 	restore();
 });
 
-test('scheduled health probe performs an authenticated primary calendar read after token refresh', async () => {
+test('scheduled health probe fails closed when the primary Events API read fails', async () => {
 	const { probeGoogleCalendarHealth } = await import('../../src/lib/server/google-calendar-health.ts');
 	const db = makeDb();
 	const fetches = [];
 	const restore = installFetchMock(async (url) => {
 		fetches.push(String(url));
 		if (String(url).includes('/token')) return jsonResponse({ access_token: 'access-token' });
-		if (String(url).includes('/freeBusy')) {
-			return jsonResponse({ calendars: { primary: { errors: [{ reason: 'backendError' }], busy: [] } } });
+		if (String(url).includes('/calendars/primary/events')) {
+			return textResponse('backend error', { status: 503 });
 		}
 		throw new Error(`unexpected fetch ${url}`);
 	});
@@ -326,7 +330,7 @@ test('scheduled health probe performs an authenticated primary calendar read aft
 	const result = await probeGoogleCalendarHealth(db, 'user-1', 'client', 'secret');
 
 	assert.deepEqual(result, { ok: false, reason: 'unknown' });
-	assert(fetches.some((url) => url.includes('/freeBusy')));
+	assert(fetches.some((url) => url.includes('/calendars/primary/events')));
 	restore();
 });
 
@@ -376,4 +380,238 @@ test('scheduled worker reports calendar failure and sends a success signal after
 	assert(fetches.includes('https://hc.example/check'));
 	assert(!fetches.includes('https://hc.example/check/fail'));
 	restore();
+});
+
+test('rolling booking window is lower-inclusive and upper-exclusive', async () => {
+	const {
+		getBookingWindow,
+		isStartInBookingWindow,
+		filterSlotsToBookingWindow
+	} = await import('../../src/lib/server/booking-rules.ts');
+	const now = new Date('2030-03-01T12:00:00.000Z');
+	const window = getBookingWindow(now);
+
+	assert.equal(window.start.toISOString(), '2030-03-03T12:00:00.000Z');
+	assert.equal(window.end.toISOString(), '2030-03-17T12:00:00.000Z');
+	assert.equal(isStartInBookingWindow(new Date('2030-03-03T11:59:59.999Z'), now), false);
+	assert.equal(isStartInBookingWindow(new Date('2030-03-03T12:00:00.000Z'), now), true);
+	assert.equal(isStartInBookingWindow(new Date('2030-03-17T11:59:59.999Z'), now), true);
+	assert.equal(isStartInBookingWindow(new Date('2030-03-17T12:00:00.000Z'), now), false);
+
+	assert.deepEqual(filterSlotsToBookingWindow([
+		{ start: '2030-03-03T11:59:59.999Z', end: '2030-03-03T12:29:59.999Z' },
+		{ start: '2030-03-03T12:00:00.000Z', end: '2030-03-03T12:30:00.000Z' },
+		{ start: '2030-03-17T12:00:00.000Z', end: '2030-03-17T12:30:00.000Z' }
+	], now), [
+		{ start: '2030-03-03T12:00:00.000Z', end: '2030-03-03T12:30:00.000Z' }
+	]);
+});
+
+test('Pacific date grouping handles UTC midnight and DST boundaries', async () => {
+	const { formatPacificDate } = await import('../../src/lib/server/booking-rules.ts');
+
+	assert.equal(formatPacificDate(new Date('2030-01-10T07:59:59.000Z')), '2030-01-09');
+	assert.equal(formatPacificDate(new Date('2030-01-10T08:00:00.000Z')), '2030-01-10');
+	assert.equal(formatPacificDate(new Date('2030-03-10T09:59:59.000Z')), '2030-03-10');
+	assert.equal(formatPacificDate(new Date('2030-03-10T10:00:00.000Z')), '2030-03-10');
+	assert.equal(formatPacificDate(new Date('2030-11-03T08:59:59.000Z')), '2030-11-03');
+	assert.equal(formatPacificDate(new Date('2030-11-03T09:00:00.000Z')), '2030-11-03');
+});
+
+test('primary calendar blackouts include free all-day and timed availability overlaps only', async () => {
+	const { getPrimaryBlackoutDates } = await import('../../src/lib/server/primary-calendar-blackouts.ts');
+
+	const rulesByDate = new Map([
+		['2030-04-10', [{ start_time: '09:00', end_time: '17:00' }]],
+		['2030-04-11', [{ start_time: '09:00', end_time: '17:00' }]],
+		['2030-04-12', [{ start_time: '09:00', end_time: '17:00' }]],
+		['2030-04-13', [{ start_time: '09:00', end_time: '17:00' }]]
+	]);
+	const blackouts = getPrimaryBlackoutDates({
+		rulesByDate,
+		events: [
+			{
+				id: 'free-all-day',
+				status: 'confirmed',
+				transparency: 'transparent',
+				start: { date: '2030-04-10' },
+				end: { date: '2030-04-12' }
+			},
+			{
+				id: 'outside-hours',
+				status: 'confirmed',
+				transparency: 'transparent',
+				start: { dateTime: '2030-04-12T03:00:00.000-07:00' },
+				end: { dateTime: '2030-04-12T04:00:00.000-07:00' }
+			},
+			{
+				id: 'inside-hours',
+				status: 'confirmed',
+				transparency: 'transparent',
+				start: { dateTime: '2030-04-13T09:30:00.000-07:00' },
+				end: { dateTime: '2030-04-13T10:00:00.000-07:00' }
+			},
+			{
+				id: 'cancelled',
+				status: 'cancelled',
+				start: { date: '2030-04-12' },
+				end: { date: '2030-04-13' }
+			}
+		]
+	});
+
+	assert.deepEqual([...blackouts].sort(), ['2030-04-10', '2030-04-11', '2030-04-13']);
+});
+
+test('date reservation uniqueness produces one same-date winner', async () => {
+	const { claimPacificDateReservation } = await import('../../src/lib/server/booking-rules.ts');
+	const active = new Set();
+	const db = {
+		prepare() {
+			return {
+				bind(_id, userId, pacificDate) {
+					this.key = `${userId}:${pacificDate}`;
+					return this;
+				},
+				async run() {
+					if (active.has(this.key)) throw new Error('UNIQUE constraint failed');
+					active.add(this.key);
+					return { success: true };
+				}
+			};
+		}
+	};
+
+	const first = await claimPacificDateReservation(db, {
+		id: 'reservation-1',
+		userId: 'user-1',
+		pacificDate: '2030-05-01',
+		bookingId: 'booking-1',
+		kind: 'booking'
+	});
+	assert.equal(first, 'reservation-1');
+	await assert.rejects(
+		() => claimPacificDateReservation(db, {
+			id: 'reservation-2',
+			userId: 'user-1',
+			pacificDate: '2030-05-01',
+			bookingId: 'booking-2',
+			kind: 'booking'
+		}),
+		/date is no longer available/
+	);
+});
+
+test('legacy canceled booking rows keep their Pacific date consumed', async () => {
+	const { getConsumedPacificDates } = await import('../../src/lib/server/booking-rules.ts');
+	const db = {
+		prepare(sql) {
+			return {
+				bind() {
+					return this;
+				},
+				async all() {
+					if (sql.includes('booking_date_reservations')) return { results: [] };
+					return {
+						results: [
+							{ id: 'cancelled-booking', start_time: '2030-01-10T07:30:00.000Z' }
+						]
+					};
+				}
+			};
+		}
+	};
+
+	assert.deepEqual(await getConsumedPacificDates(db, 'user-1'), new Set(['2030-01-09']));
+});
+
+test('scheduled health probe uses the primary Events API read', async () => {
+	const { probeGoogleCalendarHealth } = await import('../../src/lib/server/google-calendar-health.ts');
+	const db = makeDb();
+	const fetches = [];
+	const restore = installFetchMock(async (url) => {
+		const href = String(url);
+		fetches.push(href);
+		if (href.includes('/token')) return jsonResponse({ access_token: 'access-token' });
+		if (href.includes('/calendars/primary/events')) return jsonResponse({ items: [] });
+		throw new Error(`unexpected fetch ${url}`);
+	});
+
+	const result = await probeGoogleCalendarHealth(db, 'user-1', 'client', 'secret');
+
+	assert.deepEqual(result, { ok: true });
+	assert(fetches.some((url) => url.includes('/calendars/primary/events')));
+	assert(!fetches.some((url) => url.includes('/freeBusy')));
+	restore();
+});
+
+test('day availability ignores stale cached slots outside the rolling window', async () => {
+	const source = await readFile(new URL('../../src/routes/api/availability/+server.ts', import.meta.url), 'utf8');
+
+	assert.doesNotMatch(source, /KV\.get\(cacheKey\)/);
+	assert.doesNotMatch(source, /KV\.put\(cacheKey/);
+	assert.match(source, /filterSlotsToBookingWindow/);
+	assert.match(source, /getPrimaryCalendarEvents/);
+});
+
+test('month availability ignores stale cached dates outside the rolling window', async () => {
+	const source = await readFile(new URL('../../src/routes/api/availability/month/+server.ts', import.meta.url), 'utf8');
+
+	assert.doesNotMatch(source, /KV\.get\(cacheKey\)/);
+	assert.doesNotMatch(source, /KV\.put\(cacheKey/);
+	assert.match(source, /filterSlotsToBookingWindow/);
+	assert.match(source, /getPrimaryCalendarEvents/);
+});
+
+test('secondary calendars stay slot-only while primary events drive date blackouts', async () => {
+	const daySource = await readFile(new URL('../../src/routes/api/availability/+server.ts', import.meta.url), 'utf8');
+	const blackoutSource = await readFile(new URL('../../src/lib/server/primary-calendar-blackouts.ts', import.meta.url), 'utf8');
+
+	assert.match(daySource, /getPrimaryCalendarEvents\(googleAccessToken/);
+	assert.match(daySource, /getBusyTimes\(googleAccessToken, startOfDay, endOfDay, selectedCalendars\)/);
+	assert.match(blackoutSource, /event\.start\.date/);
+	assert.match(blackoutSource, /rulesOverlapTimedEvent/);
+});
+
+test('direct reschedule reserves destination and releases source only after booking update', async () => {
+	const source = await readFile(new URL('../../src/routes/api/bookings/reschedule/+server.ts', import.meta.url), 'utf8');
+
+	assert.match(source, /assertStartInBookingWindow\(newStartTime\)/);
+	assert.match(source, /claimPacificDateReservation\(db, \{\s*userId: originalBooking\.user_id,\s*pacificDate: destinationPacificDate,\s*bookingId,/s);
+	assert.match(source, /UPDATE bookings SET[\s\S]*start_time = \?/);
+	assert.match(source, /releaseBookingDateReservations\(db, \{ bookingId, pacificDate: sourcePacificDate \}\)/);
+	assert.match(source, /releaseBookingDateReservations\(db, \{ bookingId, pacificDate: destinationPacificDate \}\)/);
+});
+
+test('pending proposals hold destination dates and clean up failed proposal claims', async () => {
+	const source = await readFile(new URL('../../src/routes/api/bookings/propose-reschedule/+server.ts', import.meta.url), 'utf8');
+
+	assert.match(source, /assertStartInBookingWindow\(proposedStartTime\)/);
+	assert.match(source, /claimPacificDateReservation\(db, \{\s*userId: booking\.user_id,\s*pacificDate: destinationPacificDate,\s*proposalId,/s);
+	assert.match(source, /UPDATE bookings SET status = 'rescheduled'/);
+	assert.match(source, /releaseBookingDateReservations\(db, \{ proposalId \}\)/);
+	assert.match(source, /DELETE FROM reschedule_proposals WHERE id = \?/);
+});
+
+test('accepted proposals move the reservation and declined proposals keep source consumed', async () => {
+	const source = await readFile(new URL('../../src/routes/reschedule-response/[token]/+page.server.ts', import.meta.url), 'utf8');
+	const acceptSection = source.slice(source.indexOf('accept: async'), source.indexOf('decline: async'));
+	const declineSection = source.slice(source.indexOf('decline: async'));
+
+	assert.match(acceptSection, /assertStartInBookingWindow\(proposal\.proposed_start_time\)/);
+	assert.match(acceptSection, /transferProposalReservationToBooking\(db, \{/);
+	assert.match(acceptSection, /releaseBookingDateReservations\(db, \{\s*bookingId: proposal\.booking_id,\s*pacificDate: sourcePacificDate/s);
+	assert.match(declineSection, /UPDATE bookings SET status = 'canceled'/);
+	assert.match(declineSection, /releaseBookingDateReservations\(db, \{ proposalId: proposal\.id \}\)/);
+	assert.doesNotMatch(declineSection, /pacificDate: sourcePacificDate/);
+});
+
+test('standalone cancellations do not release consumed Pacific dates', async () => {
+	const dashboardCancel = await readFile(new URL('../../src/routes/api/bookings/cancel/+server.ts', import.meta.url), 'utf8');
+	const attendeeCancel = await readFile(new URL('../../src/routes/cancel/[id]/+page.server.ts', import.meta.url), 'utf8');
+
+	assert.doesNotMatch(dashboardCancel, /releaseBookingDateReservations/);
+	assert.doesNotMatch(attendeeCancel, /releaseBookingDateReservations/);
+	assert.match(dashboardCancel, /UPDATE bookings SET status = \?/);
+	assert.match(attendeeCancel, /UPDATE bookings SET status = \?/);
 });
