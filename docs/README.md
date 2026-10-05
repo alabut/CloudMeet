@@ -1,4 +1,5 @@
 - **BREAKPOINT.md** — Current pause: infra vs design, Google/Zoom/cron status, what to do next. **Start here** if a chat was compacted.
+- **BOOKING-RULES-SPEC.md** — Confirmed booking window, daily cap, primary-calendar blackout, failure monitoring, and SMS reach goal.
 - **SETUP-NOTES.md** — Log of setup deviations, assumptions, and what's been verified live
 - **STYLE-MAP.md** — Anchor comments marking the files to restyle by hand
 - **GitHub Issues** — [The active backlog](https://github.com/alabut/CloudMeet/issues), with critical, bug, feature, improvement, and unclassified labels. No Trello or Projects board.
