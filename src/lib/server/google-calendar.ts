@@ -95,6 +95,9 @@ export async function getBusyTimes(
 		const calendars = await listCalendars(accessToken);
 		idsToQuery = calendars.map(c => c.id);
 	}
+	if (idsToQuery.length === 0) {
+		throw new Error('Failed to verify calendar availability: no accessible calendars returned');
+	}
 
 	// FreeBusy API can query multiple calendars at once
 	const response = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
@@ -266,25 +269,6 @@ export async function cancelCalendarEvent(
 	if (!response.ok) {
 		const error = await response.text();
 		throw new Error(`Failed to cancel calendar event: ${error}`);
-	}
-}
-
-/**
- * Read the primary calendar to prove authenticated Calendar API access.
- */
-export async function readPrimaryCalendar(accessToken: string): Promise<void> {
-	const response = await fetch(
-		'https://www.googleapis.com/calendar/v3/calendars/primary',
-		{
-			headers: {
-				Authorization: `Bearer ${accessToken}`
-			}
-		}
-	);
-
-	if (!response.ok) {
-		const calendarError = await response.text();
-		throw new Error(`Failed to read primary calendar: ${calendarError}`);
 	}
 }
 

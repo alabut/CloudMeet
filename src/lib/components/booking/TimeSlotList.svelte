@@ -12,6 +12,7 @@
 		brandColor: string;
 		formatTime: (isoStr: string) => string;
 		onSelectSlot: (slot: TimeSlot) => void;
+		onRetry: () => void;
 	}
 
 	let {
@@ -21,7 +22,8 @@
 		availabilityStatus = 'ready',
 		brandColor,
 		formatTime,
-		onSelectSlot
+		onSelectSlot,
+		onRetry
 	}: Props = $props();
 </script>
 
@@ -32,9 +34,10 @@
 			<div class="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style="border-color: {brandColor}; border-top-color: transparent"></div>
 		</div>
 	{:else if availabilityStatus === 'outage'}
-		<div class="py-4">
+		<div class="py-4" role="alert">
 			<p class="text-sm font-medium text-text">Availability is temporarily unavailable</p>
 			<p class="mt-2 text-sm leading-relaxed text-text-secondary">The host calendar could not be checked. Please try again soon.</p>
+			<button type="button" onclick={onRetry} class="mt-3 text-sm font-medium text-accent underline underline-offset-2">Retry availability</button>
 		</div>
 	{:else if availableSlots.length === 0}
 		<div class="py-4">

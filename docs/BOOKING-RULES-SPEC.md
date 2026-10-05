@@ -4,7 +4,7 @@
 
 CloudMeet should offer interviews only from 48 hours ahead through the following two weeks, allow at most one booking per Pacific date, and treat a booked date as used even if the booking is canceled. Google Calendar’s primary calendar is the source for whole-day blackouts: an all-day event or any event overlapping availability blocks that entire date, including events marked Free.
 
-Calendar trouble is visible to bookers and alerts AL. CloudMeet distinguishes a calendar outage from a day with no open slots, and the scheduled health check verifies that it can read Google primary after refreshing access. Host SMS on a new booking is a lower-priority reach goal.
+Calendar outages are visible to bookers, and the five-minute worker checks Google primary through the same FreeBusy API used for availability. The live Healthchecks timing and request-level alert path still need verification. Host SMS on a new booking is a lower-priority reach goal.
 
 The critical token-verification issue is closed after a passing run. The fail-closed calendar bug in issue #10 is implemented locally: Google Calendar verification failures no longer become empty/free availability. The production deployment test gate in issue #8 remains open. A successful reschedule releases its original date and applies the normal rules to its destination date.
 
@@ -39,8 +39,9 @@ The critical token-verification issue is closed after a passing run. The fail-cl
 
 - Distinguish “availability temporarily unavailable because the calendar could not be checked” from a valid date with zero available slots. Day and month availability return HTTP 503 with machine-readable `code: "calendar_unavailable"` and do not cache outage responses as empty availability.
 - The public booking page shows a distinct temporary-unavailable state for calendar outages, separate from normal empty-day/month copy.
-- The existing five-minute cron probe makes a real authenticated read against the primary Calendar API after refreshing access; refreshing the OAuth token alone is not sufficient evidence of calendar access.
+- The existing five-minute cron probe performs a real authenticated FreeBusy read of Google primary after refreshing access; refreshing the OAuth token alone is not sufficient evidence of calendar access.
 - Send a Healthchecks.io failure signal when the scheduled primary-calendar read fails. Public availability and booking-submission Google read failures also call the configured `HEALTHCHECK_URL` `/fail` URL, so transient failures do not depend on the next probe.
+- Request-level pings only reach Healthchecks when `HEALTHCHECK_URL` is present in the Pages environment. The repository deploy workflow currently documents this secret for `cloudmeet-cron`; verify the Pages setting before relying on request-level pings.
 - On scheduled recovery, the five-minute worker sends a normal success signal and clears the host-facing warning state.
 - The repository records the existing Healthchecks.io alert email as `alabut@gmail.com`. Its documented period was one day with a one-hour grace period; verify the live setting and align it with the five-minute worker cadence before calling monitoring complete.
 - Live Healthchecks period, grace, and recipient settings remain unverified unless the repo can prove them. The application does not call the Healthchecks API to configure account settings.

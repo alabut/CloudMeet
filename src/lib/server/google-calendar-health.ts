@@ -2,7 +2,7 @@
  * Probe whether the stored Google refresh token can still read Calendar data.
  */
 
-import { getValidAccessToken, readPrimaryCalendar } from './google-calendar';
+import { getBusyTimes, getValidAccessToken } from './google-calendar';
 
 export type GoogleCalendarHealth =
 	| { ok: true }
@@ -25,7 +25,8 @@ export async function probeGoogleCalendarHealth(
 
 	try {
 		const accessToken = await getValidAccessToken(db, userId, clientId, clientSecret);
-		await readPrimaryCalendar(accessToken);
+		const now = new Date();
+		await getBusyTimes(accessToken, now, new Date(now.getTime() + 24 * 60 * 60 * 1000), ['primary']);
 		return { ok: true };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);

@@ -467,6 +467,13 @@
 										{#if data.slug !== '30min'}
 											<h2 class="font-display text-xl font-medium text-text mb-6">Select a Date & Time</h2>
 										{/if}
+										{#if availabilityStatus === 'outage'}
+											<div class="calendar-availability-alert mb-4 rounded-lg border border-border bg-bg-secondary p-4" role="alert">
+												<p class="text-sm font-medium text-text">Availability is temporarily unavailable</p>
+												<p class="mt-1 text-sm leading-relaxed text-text-secondary">We couldn’t verify the host calendar, so available dates are temporarily hidden.</p>
+												<button type="button" onclick={fetchMonthAvailability} class="mt-3 text-sm font-medium text-accent underline underline-offset-2">Retry availability</button>
+											</div>
+										{/if}
 
 										<BookingCalendar
 											{currentMonth}
@@ -491,6 +498,7 @@
 										{brandColor}
 										{formatTime}
 										onSelectSlot={(slot) => { selectSlot(slot); confirmSlot(); }}
+										onRetry={() => selectedDate && handleDateSelect(selectedDate, false)}
 									/>
 								{/if}
 							</div>
@@ -587,6 +595,13 @@
 					{#if data.slug !== '30min'}
 						<h2 class="font-display text-lg font-medium text-text mb-5 text-center">Select a Date & Time</h2>
 					{/if}
+					{#if availabilityStatus === 'outage'}
+						<div class="calendar-availability-alert mb-4 rounded-lg border border-border bg-bg-secondary p-4" role="alert">
+							<p class="text-sm font-medium text-text">Availability is temporarily unavailable</p>
+							<p class="mt-1 text-sm leading-relaxed text-text-secondary">We couldn’t verify the host calendar, so available dates are temporarily hidden.</p>
+							<button type="button" onclick={fetchMonthAvailability} class="mt-3 text-sm font-medium text-accent underline underline-offset-2">Retry availability</button>
+						</div>
+					{/if}
 
 					<!-- Month navigation with arrows on sides -->
 					<div class="flex items-center justify-between mb-4">
@@ -645,9 +660,10 @@
 							<div class="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style="border-color: var(--brand-color); border-top-color: transparent;"></div>
 						</div>
 					{:else if availabilityStatus === 'outage'}
-						<div class="py-4 text-center">
+						<div class="py-4 text-center" role="alert">
 							<p class="text-sm font-medium text-text">Availability is temporarily unavailable</p>
 							<p class="mt-2 text-sm leading-relaxed text-text-secondary">The host calendar could not be checked. Please try again soon.</p>
+							<button type="button" onclick={() => selectedDate && handleDateSelect(selectedDate, false)} class="mt-3 text-sm font-medium text-accent underline underline-offset-2">Retry availability</button>
 						</div>
 					{:else if availableSlots.length === 0}
 						<p class="text-sm text-text-secondary py-4 text-center">No available times for this date</p>

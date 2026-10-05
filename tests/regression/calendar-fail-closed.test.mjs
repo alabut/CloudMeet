@@ -207,6 +207,17 @@ test('Google FreeBusy per-calendar errors and missing required calendars fail cl
 		/calendar/i
 	);
 	restore();
+
+	restore = installFetchMock(async (url) => {
+		if (String(url).includes('/calendarList')) return jsonResponse({ items: [] });
+		if (String(url).includes('/freeBusy')) return jsonResponse({ calendars: {} });
+		throw new Error(`unexpected fetch ${url}`);
+	});
+	await assert.rejects(
+		() => google.getBusyTimes('token', new Date('2030-01-01T00:00:00Z'), new Date('2030-01-02T00:00:00Z')),
+		/calendar/i
+	);
+	restore();
 });
 
 test('day availability returns a machine-readable calendar outage and does not cache empty slots', async () => {
@@ -262,9 +273,11 @@ test('booking submission revalidates Google availability before invite creation 
 	const { POST } = await loadRoute('/src/routes/api/bookings/+server.ts');
 	const db = makeDb();
 	const env = makeEnv(db);
+	const fetches = [];
 	let createInviteCalls = 0;
 	const restore = installFetchMock(async (url, init) => {
 		const href = String(url);
+		fetches.push(href);
 		if (href.includes('/token')) return jsonResponse({ access_token: 'access-token' });
 		if (href.includes('/freeBusy')) return textResponse('calendar unavailable', { status: 503 });
 		if (href.includes('/events') && init?.method === 'POST') {
@@ -293,6 +306,7 @@ test('booking submission revalidates Google availability before invite creation 
 	assert.equal((await response.json()).code, 'calendar_unavailable');
 	assert.equal(createInviteCalls, 0);
 	assert.equal(db.state.bookingInserts, 0);
+	assert(fetches.includes('https://hc.example/check/fail'));
 	restore();
 });
 
@@ -303,14 +317,16 @@ test('scheduled health probe performs an authenticated primary calendar read aft
 	const restore = installFetchMock(async (url) => {
 		fetches.push(String(url));
 		if (String(url).includes('/token')) return jsonResponse({ access_token: 'access-token' });
-		if (String(url).includes('/calendars/primary')) return textResponse('calendar unavailable', { status: 503 });
+		if (String(url).includes('/freeBusy')) {
+			return jsonResponse({ calendars: { primary: { errors: [{ reason: 'backendError' }], busy: [] } } });
+		}
 		throw new Error(`unexpected fetch ${url}`);
 	});
 
 	const result = await probeGoogleCalendarHealth(db, 'user-1', 'client', 'secret');
 
 	assert.deepEqual(result, { ok: false, reason: 'unknown' });
-	assert(fetches.some((url) => url.includes('/calendars/primary')));
+	assert(fetches.some((url) => url.includes('/freeBusy')));
 	restore();
 });
 
@@ -321,7 +337,43 @@ test('public booking page has distinct calendar-outage UI state separate from va
 	assert.match(source, /availabilityStatus/);
 	assert.match(source, /calendar_unavailable/);
 	assert.match(source, /Availability is temporarily unavailable/);
+	assert.match(source, /calendar-availability-alert/);
+	assert.match(source, /Retry availability/);
+	assert.match(source, /onclick=\{fetchMonthAvailability\}/);
 	assert.match(timeSlotSource, /availabilityStatus/);
+	assert.match(timeSlotSource, /role="alert"/);
+	assert.match(timeSlotSource, /Retry availability/);
 	assert.match(timeSlotSource, /Availability is temporarily unavailable/);
 	assert.match(timeSlotSource, /No times available/);
+});
+
+test('scheduled worker reports calendar failure and sends a success signal after recovery', async () => {
+	const { default: worker } = await import('../../workers/cron-reminders/worker.js');
+	const env = {
+		APP_URL: 'https://cloudmeet.test',
+		CRON_SECRET: 'local-test-secret',
+		HEALTHCHECK_URL: 'https://hc.example/check'
+	};
+	const fetches = [];
+	let calendarHealthy = false;
+	const restore = installFetchMock(async (url) => {
+		const href = String(url);
+		fetches.push(href);
+		if (href.includes('/api/cron/send-reminders')) return jsonResponse({ ok: true });
+		if (href.includes('/api/cron/health')) return jsonResponse({ ok: calendarHealthy });
+		if (href === 'https://hc.example/check/fail' || href === 'https://hc.example/check') {
+			return textResponse('ok');
+		}
+		throw new Error(`unexpected fetch ${url}`);
+	});
+
+	await worker.scheduled({}, env);
+	assert(fetches.includes('https://hc.example/check/fail'));
+
+	calendarHealthy = true;
+	fetches.length = 0;
+	await worker.scheduled({}, env);
+	assert(fetches.includes('https://hc.example/check'));
+	assert(!fetches.includes('https://hc.example/check/fail'));
+	restore();
 });
