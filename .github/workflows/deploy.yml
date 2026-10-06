@@ -44,6 +44,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Configure Pages watchdog secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+        run: |
+          if [ -n "$HEALTHCHECK_URL" ]; then
+            printf '%s' "$HEALTHCHECK_URL" | npx wrangler pages secret put HEALTHCHECK_URL --project-name=cloudmeet
+          fi
+
       - name: Deploy Pages
         uses: cloudflare/wrangler-action@v3
         with:
