@@ -1,6 +1,6 @@
 # CloudMeet breakpoint — updated 2026-10-05
 
-The app remains deployed. [GitHub Issues](https://github.com/alabut/CloudMeet/issues) now owns the active backlog; the old bug and tweak documents preserve history. Booking-policy decisions are captured in [BOOKING-RULES-SPEC.md](BOOKING-RULES-SPEC.md), feature #11. Critical token verification passed and issue #7 is closed. Calendar fail-closed bug #10 is implemented locally and must be reviewed before feature #11 is implemented. Host SMS is a lower-priority reach goal in issue #12. No production settings changed.
+The app remains deployed. [GitHub Issues](https://github.com/alabut/CloudMeet/issues) now owns the active backlog; the old bug and tweak documents preserve history. Booking-policy decisions are captured in [BOOKING-RULES-SPEC.md](BOOKING-RULES-SPEC.md), feature #11. Critical token verification passed and issue #7 is closed. Calendar fail-closed bug #10 and booking-rules feature #11 are implemented locally on `fix/calendar-fails-closed`; they still need review/merge/deploy planning. Host SMS is a lower-priority reach goal in issue #12. No production settings changed.
 
 ## Machine-readable notes
 
@@ -9,7 +9,7 @@ The app remains deployed. [GitHub Issues](https://github.com/alabut/CloudMeet/is
 - AL classified the historical token exposure as critical in [issue #7](https://github.com/alabut/CloudMeet/issues/7). AL reported completing Cloudflare Roll and updating the GitHub deployment secret; verification run [37370894615](https://github.com/alabut/CloudMeet/actions/runs/37370894615) passed on 2026-10-05 and the issue is closed. The check verifies token access to deployment resources; it does not probe the old token or prove write/deployment access. Never print token values.
 - Documentation-only publication may use `[skip ci]` to avoid the push-to-main deployment; application changes must not use it.
 
-V1 remains deployed. Public booking design, dashboard functional/visual work, Zoom invites, Google OAuth in production, and the cron watchdog are on `main`. Issue #8 tracks the missing production test gate. Issue #10 is implemented locally on `fix/calendar-fails-closed`; the booking-policy spec is recorded separately.
+V1 remains deployed. Public booking design, dashboard functional/visual work, Zoom invites, Google OAuth in production, and the cron watchdog are on `main`. Issue #8 tracks the missing production test gate. Issues #10 and #11 are implemented locally on `fix/calendar-fails-closed`; the booking-policy spec is recorded separately.
 
 Live: https://schedule.alabut.com  
 Repo: `/Users/alabut/Developer/CloudMeet` (`origin` = `alabut/CloudMeet`)  
@@ -80,9 +80,9 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 
 ## Recommended next
 
-1. Review and merge the local [issue #10](https://github.com/alabut/CloudMeet/issues/10) fail-closed calendar fix before implementing [feature #11](https://github.com/alabut/CloudMeet/issues/11) and its [confirmed booking rules](BOOKING-RULES-SPEC.md).
-2. Keep [issue #8](https://github.com/alabut/CloudMeet/issues/8), the automated production test gate, in view before any production release.
-3. Investigate [issue #12](https://github.com/alabut/CloudMeet/issues/12), the optional host SMS alert, after the core booking rules.
+1. Review and merge the local issue #10/#11 calendar reliability and booking-rules work on `fix/calendar-fails-closed`.
+2. Keep [issue #8](https://github.com/alabut/CloudMeet/issues/8), the automated production test gate, in view before any production release; deploy planning must include migration `0009`.
+3. Investigate [issue #12](https://github.com/alabut/CloudMeet/issues/12), the optional host SMS alert, after the core booking rules ship.
 
 Other optional product improvements:
 

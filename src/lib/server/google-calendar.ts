@@ -136,12 +136,30 @@ export async function getBusyTimes(
 		if (!calendar) {
 			throw new Error(`Failed to verify calendar availability: missing FreeBusy result for ${calendarId}`);
 		}
+		if (calendar.errors !== undefined && !Array.isArray(calendar.errors)) {
+			throw new Error(`Failed to verify calendar availability: invalid FreeBusy calendar errors for ${calendarId}`);
+		}
 		if (calendar.errors?.length) {
 			const reasons = calendar.errors.map(calendarError => calendarError.reason || 'unknown').join(', ');
 			throw new Error(`Failed to verify calendar availability for ${calendarId}: ${reasons}`);
 		}
-		const busy = calendar.busy || [];
-		allBusy.push(...busy);
+		if (!Array.isArray(calendar.busy)) {
+			throw new Error(`Failed to verify calendar availability: invalid FreeBusy busy intervals for ${calendarId}`);
+		}
+		for (const interval of calendar.busy) {
+			const candidate = interval as { start?: unknown; end?: unknown } | null;
+			if (
+				!candidate ||
+				typeof candidate.start !== 'string' ||
+				typeof candidate.end !== 'string' ||
+				Number.isNaN(new Date(candidate.start).getTime()) ||
+				Number.isNaN(new Date(candidate.end).getTime()) ||
+				new Date(candidate.end) <= new Date(candidate.start)
+			) {
+				throw new Error(`Failed to verify calendar availability: invalid FreeBusy busy interval for ${calendarId}`);
+			}
+			allBusy.push({ start: candidate.start, end: candidate.end });
+		}
 	}
 
 	// Sort and merge overlapping busy slots
@@ -182,8 +200,11 @@ export async function getPrimaryCalendarEvents(
 			items?: PrimaryCalendarEvent[];
 			nextPageToken?: string;
 		};
+		if (!Array.isArray(data.items)) {
+			throw new Error('Failed to verify primary calendar availability: invalid Events API response');
+		}
 
-		events.push(...(data.items || []));
+		events.push(...data.items);
 		pageToken = data.nextPageToken;
 	} while (pageToken);
 

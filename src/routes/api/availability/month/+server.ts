@@ -19,6 +19,7 @@ import {
 import { getPrimaryBlackoutDates } from '$lib/server/primary-calendar-blackouts';
 
 export const GET: RequestHandler = async ({ url, platform }) => {
+	const requestStartedAt = new Date();
 	const env = platform?.env;
 	if (!env) {
 		throw error(500, 'Platform env not available');
@@ -100,7 +101,11 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		// see the commit message for how this was confirmed against a real
 		// Google Calendar event.
 		const rangeEnd = new Date(year, monthNum, 1);
-		const bookingWindow = getBookingWindow();
+		const monthStartDateStr = `${year}-${String(monthNum).padStart(2, '0')}-01`;
+		const nextMonthStartDateStr = `${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, '0')}-01`;
+		const pacificMonthStart = createDateInTimezone(monthStartDateStr, '00:00', PACIFIC_TIMEZONE);
+		const pacificMonthEnd = createDateInTimezone(nextMonthStartDateStr, '00:00', PACIFIC_TIMEZONE);
+		const bookingWindow = getBookingWindow(requestStartedAt);
 		const windowStartDate = bookingWindow.start;
 		const windowEndDate = bookingWindow.end;
 
@@ -111,9 +116,9 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		const rulesByDate = new Map<string, Array<{ start_time: string; end_time: string }>>();
 
 		for (let day = 1; day <= lastDay.getDate(); day++) {
-			const date = new Date(year, monthNum - 1, day);
+			const date = new Date(Date.UTC(year, monthNum - 1, day));
 			const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-			const rules = rulesByDay.get(date.getDay());
+			const rules = rulesByDay.get(date.getUTCDay());
 			if (rules?.length) {
 				rulesByDate.set(dateStr, rules);
 			}
@@ -130,16 +135,20 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 			);
 			const primaryEvents = await getPrimaryCalendarEvents(
 				googleAccessToken,
-				createDateInTimezone(`${year}-${String(monthNum).padStart(2, '0')}-01`, '00:00', PACIFIC_TIMEZONE),
-				createDateInTimezone(`${rangeEnd.getFullYear()}-${String(rangeEnd.getMonth() + 1).padStart(2, '0')}-01`, '00:00', PACIFIC_TIMEZONE)
+				pacificMonthStart,
+				pacificMonthEnd
 			);
-			primaryBlackoutDates = getPrimaryBlackoutDates({ events: primaryEvents, rulesByDate });
+			primaryBlackoutDates = getPrimaryBlackoutDates({
+				events: primaryEvents,
+				rulesByDate,
+				availabilityTimezone: userTimezone
+			});
 
 			// Fetch Google Calendar busy times (if enabled)
 			if (useGoogleCalendar) {
 				// Use selected calendars if configured, otherwise query all
 				const selectedCalendars = userSettings.selectedGoogleCalendars;
-				const googleBusy = await getBusyTimes(googleAccessToken, firstDay, rangeEnd, selectedCalendars);
+				const googleBusy = await getBusyTimes(googleAccessToken, pacificMonthStart, pacificMonthEnd, selectedCalendars);
 				busySlots.push(...googleBusy);
 			}
 		} catch (err) {
@@ -168,7 +177,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		const availableDates: string[] = [];
 
 		for (let day = 1; day <= lastDay.getDate(); day++) {
-			const date = new Date(year, monthNum - 1, day);
+			const date = new Date(Date.UTC(year, monthNum - 1, day));
 			const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
 			const dayStart = createDateInTimezone(dateStr, '00:00', PACIFIC_TIMEZONE);
@@ -176,7 +185,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 			if (nextDayStart <= windowStartDate || dayStart >= windowEndDate) continue;
 			if (consumedDates.has(dateStr) || primaryBlackoutDates.has(dateStr)) continue;
 
-			const dayOfWeek = date.getDay();
+			const dayOfWeek = date.getUTCDay();
 			const rules = rulesByDay.get(dayOfWeek);
 
 			// No availability rules for this day
@@ -191,8 +200,9 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 				rules,
 				timezone: userTimezone,
 				durationMinutes: eventType.duration,
-				busySlots
-			}));
+				busySlots,
+				now: requestStartedAt
+			}), requestStartedAt);
 
 			if (daySlots.length > 0) {
 				availableDates.push(dateStr);

@@ -6,7 +6,7 @@
 import { json, error, type RequestEvent } from '@sveltejs/kit';
 import { getCurrentUser } from '$lib/server/auth';
 import { getEmailTemplates, isEmailEnabled } from '$lib/server/email';
-import { getPrimaryCalendarEvents, getValidAccessToken } from '$lib/server/google-calendar';
+import { getBusyTimes, getPrimaryCalendarEvents, getValidAccessToken } from '$lib/server/google-calendar';
 import { createDateInTimezone } from '$lib/server/availability-slots';
 import {
 	addCalendarDays,
@@ -53,8 +53,8 @@ export const POST = async (event: RequestEvent) => {
 			.prepare(
 				`SELECT b.id, b.user_id, b.status, b.start_time, b.end_time,
 				b.attendee_name, b.attendee_email, b.attendee_notes,
-				e.name as event_name, e.slug as event_slug,
-				u.name as host_name, u.email as host_email, u.contact_email, u.settings, u.brand_color
+					e.name as event_name, e.slug as event_slug, e.availability_calendars,
+					u.name as host_name, u.email as host_email, u.contact_email, u.settings, u.brand_color, u.timezone
 				FROM bookings b
 				JOIN event_types e ON b.event_type_id = e.id
 				JOIN users u ON b.user_id = u.id
@@ -72,11 +72,13 @@ export const POST = async (event: RequestEvent) => {
 				attendee_notes: string | null;
 				event_name: string;
 				event_slug: string;
+				availability_calendars: string | null;
 				host_name: string;
 				host_email: string;
 				contact_email: string | null;
 				settings: string | null;
 				brand_color: string | null;
+				timezone: string | null;
 			}>();
 
 		if (!booking) {
@@ -101,6 +103,15 @@ export const POST = async (event: RequestEvent) => {
 			throw error(409, 'This date is no longer available');
 		}
 
+		let userSettings: { defaultAvailabilityCalendars?: string; selectedGoogleCalendars?: string[] } = {};
+		try {
+			userSettings = booking.settings ? JSON.parse(booking.settings) : {};
+		} catch {
+			userSettings = {};
+		}
+		const availabilityCalendars = booking.availability_calendars || userSettings.defaultAvailabilityCalendars || 'both';
+		const useGoogleCalendar = availabilityCalendars === 'google' || availabilityCalendars === 'both';
+
 		try {
 			const accessToken = await getValidAccessToken(
 				db,
@@ -115,7 +126,7 @@ export const POST = async (event: RequestEvent) => {
 					WHERE user_id = ? AND day_of_week = ?
 					ORDER BY start_time`
 				)
-				.bind(booking.user_id, new Date(`${destinationPacificDate}T00:00:00`).getDay())
+				.bind(booking.user_id, new Date(`${destinationPacificDate}T00:00:00Z`).getUTCDay())
 				.all<{ start_time: string; end_time: string }>();
 			const primaryEvents = await getPrimaryCalendarEvents(
 				accessToken,
@@ -124,10 +135,22 @@ export const POST = async (event: RequestEvent) => {
 			);
 			const blackoutDates = getPrimaryBlackoutDates({
 				events: primaryEvents,
-				rulesByDate: new Map([[destinationPacificDate, availabilityRules.results || []]])
+				rulesByDate: new Map([[destinationPacificDate, availabilityRules.results || []]]),
+				availabilityTimezone: booking.timezone || PACIFIC_TIMEZONE
 			});
 			if (blackoutDates.has(destinationPacificDate)) {
 				throw error(409, 'This date is no longer available');
+			}
+			if (useGoogleCalendar) {
+				const googleBusy = await getBusyTimes(
+					accessToken,
+					new Date(proposedStartTime),
+					new Date(proposedEndTime),
+					userSettings.selectedGoogleCalendars
+				);
+				if (googleBusy.length > 0) {
+					throw error(409, 'This time slot is no longer available');
+				}
 			}
 		} catch (err: any) {
 			if (err?.status === 409) throw err;
@@ -163,10 +186,17 @@ export const POST = async (event: RequestEvent) => {
 			}
 
 			// Mark original booking as having a pending proposal
-			await db
-				.prepare(`UPDATE bookings SET status = 'rescheduled' WHERE id = ?`)
-				.bind(bookingId)
+			const bookingUpdate = await db
+				.prepare(
+					`UPDATE bookings
+					SET status = 'rescheduled'
+					WHERE id = ? AND status = 'confirmed' AND start_time = ?`
+				)
+				.bind(bookingId, booking.start_time)
 				.run();
+			if (bookingUpdate.meta?.changes !== 1) {
+				throw error(409, 'Booking is no longer available to reschedule');
+			}
 		} catch (err) {
 			if (destinationReservationClaimed) {
 				await releaseBookingDateReservations(db, { proposalId });

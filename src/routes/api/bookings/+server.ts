@@ -90,8 +90,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
 		// Get the first (and only) user for single-user setup
 		const user = await db
-			.prepare('SELECT id, email, name, slug, contact_email, settings, brand_color, outlook_refresh_token FROM users LIMIT 1')
-			.first<{ id: string; email: string; name: string; slug: string; contact_email: string | null; settings: string | null; brand_color: string | null; outlook_refresh_token: string | null }>();
+			.prepare('SELECT id, email, name, slug, contact_email, settings, brand_color, outlook_refresh_token, timezone FROM users LIMIT 1')
+			.first<{ id: string; email: string; name: string; slug: string; contact_email: string | null; settings: string | null; brand_color: string | null; outlook_refresh_token: string | null; timezone: string | null }>();
 
 		if (!user) {
 			throw error(404, 'User not found');
@@ -174,7 +174,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 					WHERE user_id = ? AND day_of_week = ?
 					ORDER BY start_time`
 				)
-				.bind(user.id, new Date(`${pacificDate}T00:00:00`).getDay())
+				.bind(user.id, new Date(`${pacificDate}T00:00:00Z`).getUTCDay())
 				.all<{ start_time: string; end_time: string }>();
 
 			const primaryEvents = await getPrimaryCalendarEvents(
@@ -184,7 +184,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			);
 			const blackoutDates = getPrimaryBlackoutDates({
 				events: primaryEvents,
-				rulesByDate: new Map([[pacificDate, availabilityRules.results || []]])
+				rulesByDate: new Map([[pacificDate, availabilityRules.results || []]]),
+				availabilityTimezone: user.timezone || PACIFIC_TIMEZONE
 			});
 			if (blackoutDates.has(pacificDate)) {
 				throw error(409, 'This date is no longer available');

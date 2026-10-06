@@ -5,7 +5,7 @@
 
 import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
-import { createCalendarEvent, cancelCalendarEvent, getPrimaryCalendarEvents, getValidAccessToken } from '$lib/server/google-calendar';
+import { createCalendarEvent, cancelCalendarEvent, getBusyTimes, getPrimaryCalendarEvents, getValidAccessToken } from '$lib/server/google-calendar';
 import { sendAdminRescheduleNotification, sendAdminCancellationNotification } from '$lib/server/email';
 import { buildCalendarEventDescription } from '$lib/server/calendar-event-description';
 import { getConfiguredZoomMeetingUrl } from '$lib/server/zoom';
@@ -16,9 +16,10 @@ import {
 	assertStartInBookingWindow,
 	claimPacificDateReservation,
 	formatPacificDate,
+	isPacificDateConsumed,
 	PACIFIC_TIMEZONE,
-	releaseBookingDateReservations,
-	transferProposalReservationToBooking
+	closePendingRescheduleProposals,
+	releaseBookingDateReservations
 } from '$lib/server/booking-rules';
 import { getPrimaryBlackoutDates } from '$lib/server/primary-calendar-blackouts';
 import { signalCalendarHealthcheckFailure } from '$lib/server/calendar-outage';
@@ -67,10 +68,13 @@ export const load: PageServerLoad = async ({ params, url, platform }) => {
 	const proposal = await db
 		.prepare(
 			`SELECT p.id, p.booking_id, p.proposed_start_time, p.proposed_end_time, p.message, p.status, p.proposed_by,
-			b.attendee_name, b.attendee_email, b.start_time as original_start_time, b.end_time as original_end_time,
-			b.google_event_id, b.attendee_notes,
-			e.name as event_name, e.slug as event_slug, e.duration_minutes,
-			u.id as user_id, u.name as host_name, u.email as host_email, u.brand_color, u.settings
+				p.expires_at, CASE WHEN p.expires_at IS NOT NULL AND p.expires_at <= CURRENT_TIMESTAMP THEN 1 ELSE 0 END as is_expired,
+				b.attendee_name, b.attendee_email, b.start_time as original_start_time, b.end_time as original_end_time,
+				b.status as booking_status,
+				b.google_event_id, b.attendee_notes,
+				e.name as event_name, e.slug as event_slug, e.duration_minutes,
+				e.availability_calendars,
+				u.id as user_id, u.name as host_name, u.email as host_email, u.brand_color, u.settings, u.timezone
 			FROM reschedule_proposals p
 			JOIN bookings b ON p.booking_id = b.id
 			JOIN event_types e ON b.event_type_id = e.id
@@ -86,10 +90,13 @@ export const load: PageServerLoad = async ({ params, url, platform }) => {
 			message: string | null;
 			status: string;
 			proposed_by: string;
+			expires_at: string | null;
+			is_expired: number;
 			attendee_name: string;
 			attendee_email: string;
 			original_start_time: string;
 			original_end_time: string;
+			booking_status: string;
 			google_event_id: string | null;
 			attendee_notes: string | null;
 			event_name: string;
@@ -104,6 +111,10 @@ export const load: PageServerLoad = async ({ params, url, platform }) => {
 
 	if (!proposal) {
 		throw error(404, 'Reschedule proposal not found or has expired');
+	}
+	if (proposal.status === 'pending' && (proposal.is_expired || proposal.booking_status !== 'rescheduled')) {
+		await closePendingRescheduleProposals(db, proposal.booking_id, 'expired');
+		proposal.status = 'expired';
 	}
 
 	if (proposal.status !== 'pending') {
@@ -143,11 +154,14 @@ export const actions: Actions = {
 			// Get proposal details
 			const proposal = await db
 				.prepare(
-					`SELECT p.id, p.booking_id, p.proposed_start_time, p.proposed_end_time, p.status,
-					b.attendee_name, b.attendee_email, b.google_event_id, b.attendee_notes,
-					b.start_time as original_start_time, b.end_time as original_end_time,
-					e.id as event_type_id, e.name as event_name, e.description as event_description, e.duration_minutes,
-					u.id as user_id, u.name as host_name, u.email as host_email, u.contact_email, u.brand_color, u.settings
+					`SELECT p.id, p.booking_id, p.proposed_start_time, p.proposed_end_time, p.status, p.expires_at,
+						CASE WHEN p.expires_at IS NOT NULL AND p.expires_at <= CURRENT_TIMESTAMP THEN 1 ELSE 0 END as is_expired,
+						b.attendee_name, b.attendee_email, b.google_event_id, b.attendee_notes,
+						b.start_time as original_start_time, b.end_time as original_end_time,
+						b.status as booking_status,
+						e.id as event_type_id, e.name as event_name, e.description as event_description, e.duration_minutes,
+						e.availability_calendars,
+						u.id as user_id, u.name as host_name, u.email as host_email, u.contact_email, u.brand_color, u.settings, u.timezone
 					FROM reschedule_proposals p
 					JOIN bookings b ON p.booking_id = b.id
 					JOIN event_types e ON b.event_type_id = e.id
@@ -161,32 +175,79 @@ export const actions: Actions = {
 					proposed_start_time: string;
 					proposed_end_time: string;
 					status: string;
+					expires_at: string | null;
+					is_expired: number;
 					attendee_name: string;
 					attendee_email: string;
 					google_event_id: string | null;
 					attendee_notes: string | null;
 					original_start_time: string;
 					original_end_time: string;
+					booking_status: string;
 					event_type_id: string;
 					event_name: string;
 					event_description: string | null;
 					duration_minutes: number;
+					availability_calendars: string | null;
 					user_id: string;
 					host_name: string;
 					host_email: string;
 					contact_email: string | null;
 					brand_color: string | null;
 					settings: string | null;
+					timezone: string | null;
 				}>();
 
 			if (!proposal || proposal.status !== 'pending') {
 				return fail(400, { error: 'Proposal already responded to or expired' });
 			}
 
-			assertStartInBookingWindow(proposal.proposed_start_time);
+			if (proposal.is_expired || proposal.booking_status !== 'rescheduled') {
+				await closePendingRescheduleProposals(db, proposal.booking_id, 'expired');
+				return fail(409, { error: 'This reschedule proposal is no longer available' });
+			}
+
+			try {
+				assertStartInBookingWindow(proposal.proposed_start_time);
+			} catch {
+				await closePendingRescheduleProposals(db, proposal.booking_id, 'expired');
+				return fail(409, { error: 'This time is outside the booking window' });
+			}
 			const sourcePacificDate = formatPacificDate(new Date(proposal.original_start_time));
 			const destinationPacificDate = formatPacificDate(new Date(proposal.proposed_start_time));
+			if (
+				destinationPacificDate !== sourcePacificDate &&
+				await isPacificDateConsumed(db, proposal.user_id, destinationPacificDate, {
+					excludeBookingId: proposal.booking_id,
+					excludeProposalId: proposal.id
+				})
+			) {
+				return fail(409, { error: 'This date is no longer available' });
+			}
 
+			const stillPending = await db
+				.prepare(
+					`SELECT 1
+					FROM reschedule_proposals p
+					JOIN bookings b ON b.id = p.booking_id
+					WHERE p.id = ? AND p.status = 'pending' AND b.status = 'rescheduled'
+					AND (p.expires_at IS NULL OR p.expires_at > CURRENT_TIMESTAMP)`
+				)
+				.bind(proposal.id)
+				.first();
+			if (!stillPending) {
+				await closePendingRescheduleProposals(db, proposal.booking_id, 'expired');
+				return fail(409, { error: 'This reschedule proposal is no longer available' });
+			}
+
+			let userSettings: { defaultAvailabilityCalendars?: string; selectedGoogleCalendars?: string[] } = {};
+			try {
+				userSettings = proposal.settings ? JSON.parse(proposal.settings) : {};
+			} catch {
+				userSettings = {};
+			}
+			const availabilityCalendars = proposal.availability_calendars || userSettings.defaultAvailabilityCalendars || 'both';
+			const useGoogleCalendar = availabilityCalendars === 'google' || availabilityCalendars === 'both';
 			try {
 				const accessToken = await getValidAccessToken(
 					db,
@@ -201,7 +262,7 @@ export const actions: Actions = {
 						WHERE user_id = ? AND day_of_week = ?
 						ORDER BY start_time`
 					)
-					.bind(proposal.user_id, new Date(`${destinationPacificDate}T00:00:00`).getDay())
+					.bind(proposal.user_id, new Date(`${destinationPacificDate}T00:00:00Z`).getUTCDay())
 					.all<{ start_time: string; end_time: string }>();
 				const primaryEvents = await getPrimaryCalendarEvents(
 					accessToken,
@@ -210,10 +271,22 @@ export const actions: Actions = {
 				);
 				const blackoutDates = getPrimaryBlackoutDates({
 					events: primaryEvents,
-					rulesByDate: new Map([[destinationPacificDate, availabilityRules.results || []]])
+					rulesByDate: new Map([[destinationPacificDate, availabilityRules.results || []]]),
+					availabilityTimezone: proposal.timezone || PACIFIC_TIMEZONE
 				});
 				if (blackoutDates.has(destinationPacificDate)) {
 					return fail(409, { error: 'This date is no longer available' });
+				}
+				if (useGoogleCalendar) {
+					const busy = await getBusyTimes(
+						accessToken,
+						new Date(proposal.proposed_start_time),
+						new Date(proposal.proposed_end_time),
+						userSettings.selectedGoogleCalendars
+					);
+					if (busy.length > 0) {
+						return fail(409, { error: 'This time slot is no longer available' });
+					}
 				}
 			} catch (err) {
 				console.error('Failed to verify primary calendar before accepting proposal:', err);
@@ -224,46 +297,28 @@ export const actions: Actions = {
 				});
 			}
 
+			let proposalReservationClaimed = false;
 			if (destinationPacificDate !== sourcePacificDate) {
-				const existingReservation = await db
+				const ownReservation = await db
 					.prepare(
-						`SELECT id, booking_id, proposal_id
-						FROM booking_date_reservations
-						WHERE user_id = ? AND pacific_date = ? AND released_at IS NULL`
+						`SELECT id FROM booking_date_reservations
+						WHERE proposal_id = ? AND pacific_date = ? AND released_at IS NULL`
 					)
-					.bind(proposal.user_id, destinationPacificDate)
-					.first<{ id: string; booking_id: string | null; proposal_id: string | null }>();
-
-				if (
-					existingReservation &&
-					existingReservation.proposal_id !== proposal.id &&
-					existingReservation.booking_id !== proposal.booking_id
-				) {
-					return fail(409, { error: 'This date is no longer available' });
-				}
-
-				if (!existingReservation) {
-					await claimPacificDateReservation(db, {
-						userId: proposal.user_id,
-						pacificDate: destinationPacificDate,
-						bookingId: proposal.booking_id,
-						kind: 'booking'
-					});
-				}
-			}
-
-			// Cancel old Google Calendar event if exists
-			if (proposal.google_event_id) {
-				try {
-					const accessToken = await getValidAccessToken(
-						db,
-						proposal.user_id,
-						env.GOOGLE_CLIENT_ID,
-						env.GOOGLE_CLIENT_SECRET
-					);
-					await cancelCalendarEvent(accessToken, proposal.google_event_id);
-				} catch (err) {
-					console.error('Failed to cancel old calendar event:', err);
+					.bind(proposal.id, destinationPacificDate)
+					.first();
+				if (!ownReservation) {
+					try {
+						await claimPacificDateReservation(db, {
+							userId: proposal.user_id,
+							pacificDate: destinationPacificDate,
+							proposalId: proposal.id,
+							kind: 'proposal'
+						});
+						proposalReservationClaimed = true;
+					} catch (err: any) {
+						if (err?.status === 409) return fail(409, { error: 'This date is no longer available' });
+						throw err;
+					}
 				}
 			}
 
@@ -271,16 +326,17 @@ export const actions: Actions = {
 			const zoomUrl = getConfiguredZoomMeetingUrl(env);
 			let newMeetingUrl: string | null = zoomUrl;
 			let newGoogleEventId: string | null = null;
+			let eventAccessToken: string | null = null;
 
 			try {
-				const accessToken = await getValidAccessToken(
+				eventAccessToken = await getValidAccessToken(
 					db,
 					proposal.user_id,
 					env.GOOGLE_CLIENT_ID,
 					env.GOOGLE_CLIENT_SECRET
 				);
 
-				const calendarEvent = await createCalendarEvent(accessToken, {
+				const calendarEvent = await createCalendarEvent(eventAccessToken, {
 					summary: `${proposal.event_name} with ${proposal.attendee_name}`,
 					description: buildCalendarEventDescription({
 						eventDescription: proposal.event_description,
@@ -313,39 +369,106 @@ export const actions: Actions = {
 				});
 			}
 
-			// Update the original booking with new times
-			await db
-				.prepare(
-					`UPDATE bookings
-					SET start_time = ?, end_time = ?, status = 'confirmed', google_event_id = ?, meeting_url = ?
-					WHERE id = ?`
-				)
-				.bind(
-					proposal.proposed_start_time,
-					proposal.proposed_end_time,
-					newGoogleEventId,
-					newMeetingUrl,
-					proposal.booking_id
-				)
-				.run();
+			const acceptStatements = [
+				db
+					.prepare(
+						`UPDATE reschedule_proposals
+						SET status = 'accepted', responded_at = CURRENT_TIMESTAMP
+						WHERE id = ? AND status = 'pending'
+						AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+						AND EXISTS (SELECT 1 FROM bookings WHERE id = ? AND status = 'rescheduled')`
+					)
+					.bind(proposal.id, proposal.booking_id),
+				db
+					.prepare(
+						`UPDATE bookings
+						SET start_time = ?, end_time = ?, status = 'confirmed', google_event_id = ?, meeting_url = ?
+						WHERE id = ? AND status = 'rescheduled'
+						AND EXISTS (SELECT 1 FROM reschedule_proposals WHERE id = ? AND status = 'accepted')`
+					)
+					.bind(
+						proposal.proposed_start_time,
+						proposal.proposed_end_time,
+						newGoogleEventId,
+						newMeetingUrl,
+						proposal.booking_id,
+						proposal.id
+					),
+				db
+					.prepare(
+						`UPDATE booking_date_reservations
+						SET booking_id = ?, proposal_id = NULL, kind = 'booking'
+						WHERE proposal_id = ? AND released_at IS NULL
+						AND EXISTS (SELECT 1 FROM reschedule_proposals WHERE id = ? AND status = 'accepted')`
+					)
+					.bind(proposal.booking_id, proposal.id, proposal.id),
+				...(destinationPacificDate !== sourcePacificDate
+					? [
+							db
+								.prepare(
+									`UPDATE booking_date_reservations
+									SET released_at = CURRENT_TIMESTAMP
+									WHERE booking_id = ? AND pacific_date = ? AND released_at IS NULL
+									AND EXISTS (SELECT 1 FROM reschedule_proposals WHERE id = ? AND status = 'accepted')`
+								)
+								.bind(proposal.booking_id, sourcePacificDate, proposal.id)
+						]
+					: []),
+				db
+					.prepare(
+						`UPDATE booking_date_reservations
+						SET released_at = CURRENT_TIMESTAMP
+						WHERE released_at IS NULL AND proposal_id IN (
+							SELECT id FROM reschedule_proposals WHERE booking_id = ? AND status = 'pending'
+						)
+						AND EXISTS (SELECT 1 FROM reschedule_proposals WHERE id = ? AND status = 'accepted')`
+					)
+					.bind(proposal.booking_id, proposal.id),
+				db
+					.prepare(
+						`UPDATE reschedule_proposals
+						SET status = 'counter_proposed', responded_at = CURRENT_TIMESTAMP
+						WHERE booking_id = ? AND status = 'pending'
+						AND EXISTS (SELECT 1 FROM reschedule_proposals WHERE id = ? AND status = 'accepted')`
+					)
+					.bind(proposal.booking_id, proposal.id)
+			];
 
-			// Update proposal status
-			await db
-				.prepare(
-					`UPDATE reschedule_proposals SET status = 'accepted', responded_at = CURRENT_TIMESTAMP WHERE id = ?`
-				)
-				.bind(proposal.id)
-				.run();
+			let acceptResults;
+			try {
+				acceptResults = await db.batch(acceptStatements);
+			} catch (err) {
+				if (eventAccessToken && newGoogleEventId) {
+					try {
+						await cancelCalendarEvent(eventAccessToken, newGoogleEventId);
+					} catch (cleanupErr) {
+						console.error('Failed to remove uncommitted rescheduled calendar event:', cleanupErr);
+					}
+				}
+				throw err;
+			}
+			if (acceptResults[0]?.meta?.changes === 0) {
+				if (eventAccessToken && newGoogleEventId) {
+					try {
+						await cancelCalendarEvent(eventAccessToken, newGoogleEventId);
+					} catch (cleanupErr) {
+						console.error('Failed to remove uncommitted rescheduled calendar event:', cleanupErr);
+					}
+				}
+				if (proposalReservationClaimed) {
+					await releaseBookingDateReservations(db, { proposalId: proposal.id });
+				}
+				return fail(409, { error: 'This reschedule proposal is no longer available' });
+			}
 
-			if (destinationPacificDate !== sourcePacificDate) {
-				await transferProposalReservationToBooking(db, {
-					proposalId: proposal.id,
-					bookingId: proposal.booking_id
-				});
-				await releaseBookingDateReservations(db, {
-					bookingId: proposal.booking_id,
-					pacificDate: sourcePacificDate
-				});
+			// Cancel the old calendar event only after the accepted state is committed,
+			// so a lost race never leaves a live booking without its invitation.
+			if (proposal.google_event_id && eventAccessToken) {
+				try {
+					await cancelCalendarEvent(eventAccessToken, proposal.google_event_id);
+				} catch (err) {
+					console.error('Failed to cancel old calendar event:', err);
+				}
 			}
 
 			// Send admin notification about accepted reschedule

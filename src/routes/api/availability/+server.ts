@@ -22,6 +22,7 @@ import {
 import { getPrimaryBlackoutDates } from '$lib/server/primary-calendar-blackouts';
 
 export const GET: RequestHandler = async ({ url, platform }) => {
+	const requestStartedAt = new Date();
 	const env = platform?.env;
 	if (!env) {
 		throw error(500, 'Platform env not available');
@@ -82,8 +83,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 		// endpoint uses the local component constructor, so the two disagreed.
 		// This only stayed hidden in production because Workers run with TZ=UTC.
 		const [reqYear, reqMonth, reqDay] = date.split('-').map(Number);
-		const requestedDate = new Date(reqYear, reqMonth - 1, reqDay);
-		const dayOfWeek = requestedDate.getDay();
+		const requestedDate = new Date(Date.UTC(reqYear, reqMonth - 1, reqDay));
+		const dayOfWeek = requestedDate.getUTCDay();
 
 		// Get availability rules for this day
 		const availabilityRules = await db
@@ -118,7 +119,8 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 			const primaryEvents = await getPrimaryCalendarEvents(googleAccessToken, startOfDay, endOfDay);
 			const blackoutDates = getPrimaryBlackoutDates({
 				events: primaryEvents,
-				rulesByDate: new Map([[date, availabilityRules.results]])
+				rulesByDate: new Map([[date, availabilityRules.results]]),
+				availabilityTimezone: userTimezone
 			});
 			if (blackoutDates.has(date)) {
 				return json({ slots: [] });
@@ -161,8 +163,9 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 			rules: availabilityRules.results,
 			timezone: userTimezone,
 			durationMinutes: eventType.duration,
-			busySlots
-		}));
+			busySlots,
+			now: requestStartedAt
+		}), requestStartedAt);
 
 		return json({ slots });
 	} catch (err: any) {

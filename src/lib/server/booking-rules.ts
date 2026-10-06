@@ -78,10 +78,12 @@ export function rulesOverlapTimedEvent(params: {
 	rules: AvailabilityRule[];
 	eventStart: Date;
 	eventEnd: Date;
+	availabilityTimezone?: string;
 }): boolean {
+	const availabilityTimezone = params.availabilityTimezone || PACIFIC_TIMEZONE;
 	for (const rule of params.rules) {
-		const availabilityStart = createDateInTimezone(params.dateStr, rule.start_time, PACIFIC_TIMEZONE);
-		const availabilityEnd = createDateInTimezone(params.dateStr, rule.end_time, PACIFIC_TIMEZONE);
+		const availabilityStart = createDateInTimezone(params.dateStr, rule.start_time, availabilityTimezone);
+		const availabilityEnd = createDateInTimezone(params.dateStr, rule.end_time, availabilityTimezone);
 		if (intervalOverlaps(params.eventStart, params.eventEnd, availabilityStart, availabilityEnd)) {
 			return true;
 		}
@@ -92,18 +94,31 @@ export function rulesOverlapTimedEvent(params: {
 export async function getConsumedPacificDates(
 	db: D1Database,
 	userId: string,
-	options: { excludeBookingId?: string | null } = {}
+	options: { excludeBookingId?: string | null; excludeProposalId?: string | null } = {}
 ): Promise<Set<string>> {
 	const consumed = new Set<string>();
+	await expireStaleRescheduleProposals(db, userId);
 
 	try {
+		let reservationSql = `SELECT pacific_date
+			FROM booking_date_reservations
+			WHERE user_id = ? AND released_at IS NULL`;
+		const reservationBindings: string[] = [userId];
+		if (options.excludeBookingId) {
+			reservationSql += `
+				AND (booking_id IS NULL OR booking_id != ?)
+				AND (proposal_id IS NULL OR proposal_id NOT IN (
+					SELECT id FROM reschedule_proposals WHERE booking_id = ?
+				))`;
+			reservationBindings.push(options.excludeBookingId, options.excludeBookingId);
+		}
+		if (options.excludeProposalId) {
+			reservationSql += ` AND (proposal_id IS NULL OR proposal_id != ?)`;
+			reservationBindings.push(options.excludeProposalId);
+		}
 		const reservations = await db
-			.prepare(
-				`SELECT pacific_date
-				FROM booking_date_reservations
-				WHERE user_id = ? AND released_at IS NULL`
-			)
-			.bind(userId)
+			.prepare(reservationSql)
+			.bind(...reservationBindings)
 			.all<{ pacific_date: string }>();
 
 		for (const row of reservations.results || []) {
@@ -139,10 +154,105 @@ export async function isPacificDateConsumed(
 	db: D1Database,
 	userId: string,
 	pacificDate: string,
-	options: { excludeBookingId?: string | null } = {}
+	options: { excludeBookingId?: string | null; excludeProposalId?: string | null } = {}
 ): Promise<boolean> {
 	const consumed = await getConsumedPacificDates(db, userId, options);
 	return consumed.has(pacificDate);
+}
+
+export async function closePendingRescheduleProposals(
+	db: D1Database,
+	bookingId: string,
+	status: 'expired' | 'counter_proposed'
+): Promise<void> {
+	await db.batch([
+		db
+			.prepare(
+				`UPDATE booking_date_reservations
+				SET released_at = CURRENT_TIMESTAMP
+				WHERE released_at IS NULL AND proposal_id IN (
+					SELECT id FROM reschedule_proposals WHERE booking_id = ? AND status = 'pending'
+				)`
+			)
+			.bind(bookingId),
+		db
+			.prepare(
+				`UPDATE reschedule_proposals
+				SET status = ?, responded_at = CURRENT_TIMESTAMP
+				WHERE booking_id = ? AND status = 'pending'`
+			)
+			.bind(status, bookingId),
+		...(status === 'expired'
+			? [
+					db
+						.prepare(
+							`UPDATE bookings
+							SET status = 'confirmed'
+							WHERE id = ? AND status = 'rescheduled'
+							AND NOT EXISTS (
+								SELECT 1 FROM reschedule_proposals
+								WHERE booking_id = ? AND status = 'pending'
+							)`
+						)
+						.bind(bookingId, bookingId)
+				]
+			: [])
+	]);
+}
+
+export async function expireStaleRescheduleProposals(db: D1Database, userId: string): Promise<void> {
+	const staleProposal = await db
+		.prepare(
+			`SELECT 1
+			FROM reschedule_proposals p
+			JOIN bookings b ON b.id = p.booking_id
+			WHERE b.user_id = ? AND p.status = 'pending'
+			AND p.expires_at IS NOT NULL AND p.expires_at <= CURRENT_TIMESTAMP
+			LIMIT 1`
+		)
+		.bind(userId)
+		.first();
+	if (!staleProposal) return;
+
+	await db.batch([
+		db
+			.prepare(
+				`UPDATE booking_date_reservations
+				SET released_at = CURRENT_TIMESTAMP
+				WHERE user_id = ? AND released_at IS NULL AND proposal_id IN (
+					SELECT p.id
+					FROM reschedule_proposals p
+					JOIN bookings b ON b.id = p.booking_id
+					WHERE b.user_id = ? AND p.status = 'pending'
+					AND p.expires_at IS NOT NULL AND p.expires_at <= CURRENT_TIMESTAMP
+				)`
+			)
+			.bind(userId, userId),
+		db
+			.prepare(
+				`UPDATE reschedule_proposals
+				SET status = 'expired', responded_at = CURRENT_TIMESTAMP
+				WHERE status = 'pending' AND expires_at IS NOT NULL
+				AND expires_at <= CURRENT_TIMESTAMP
+				AND booking_id IN (SELECT id FROM bookings WHERE user_id = ?)`
+			)
+			.bind(userId),
+		db
+			.prepare(
+				`UPDATE bookings
+				SET status = 'confirmed'
+				WHERE user_id = ? AND status = 'rescheduled'
+				AND id IN (
+					SELECT booking_id FROM reschedule_proposals
+					WHERE status = 'expired' AND expires_at IS NOT NULL AND expires_at <= CURRENT_TIMESTAMP
+				)
+				AND NOT EXISTS (
+					SELECT 1 FROM reschedule_proposals
+					WHERE booking_id = bookings.id AND status = 'pending'
+				)`
+			)
+			.bind(userId)
+	]);
 }
 
 export async function claimPacificDateReservation(
@@ -209,18 +319,4 @@ export async function releaseBookingDateReservations(
 			.bind(params.proposalId)
 			.run();
 	}
-}
-
-export async function transferProposalReservationToBooking(
-	db: D1Database,
-	params: { proposalId: string; bookingId: string }
-): Promise<void> {
-	await db
-		.prepare(
-			`UPDATE booking_date_reservations
-			SET booking_id = ?, kind = 'booking'
-			WHERE proposal_id = ? AND released_at IS NULL`
-		)
-		.bind(params.bookingId, params.proposalId)
-		.run();
 }

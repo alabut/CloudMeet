@@ -21,6 +21,8 @@ declare global {
 				ZOOM_MEETING_URL?: string;
 				MICROSOFT_CLIENT_ID?: string;
 				MICROSOFT_CLIENT_SECRET?: string;
+				/** Healthchecks.io ping URL signaled when calendar verification fails */
+				HEALTHCHECK_URL?: string;
 			};
 			context: {
 				waitUntil(promise: Promise<any>): void;

@@ -510,6 +510,9 @@ test('legacy canceled booking rows keep their Pacific date consumed', async () =
 				bind() {
 					return this;
 				},
+				async first() {
+					return null;
+				},
 				async all() {
 					if (sql.includes('booking_date_reservations')) return { results: [] };
 					return {
@@ -519,7 +522,8 @@ test('legacy canceled booking rows keep their Pacific date consumed', async () =
 					};
 				}
 			};
-		}
+		},
+		async batch() { return []; }
 	};
 
 	assert.deepEqual(await getConsumedPacificDates(db, 'user-1'), new Set(['2030-01-09']));
@@ -575,12 +579,41 @@ test('secondary calendars stay slot-only while primary events drive date blackou
 
 test('direct reschedule reserves destination and releases source only after booking update', async () => {
 	const source = await readFile(new URL('../../src/routes/api/bookings/reschedule/+server.ts', import.meta.url), 'utf8');
+	const stateUpdateSection = source.slice(source.indexOf('const stateStatements'), source.indexOf('const stateResults'));
 
 	assert.match(source, /assertStartInBookingWindow\(newStartTime\)/);
 	assert.match(source, /claimPacificDateReservation\(db, \{\s*userId: originalBooking\.user_id,\s*pacificDate: destinationPacificDate,\s*bookingId,/s);
-	assert.match(source, /UPDATE bookings SET[\s\S]*start_time = \?/);
-	assert.match(source, /releaseBookingDateReservations\(db, \{ bookingId, pacificDate: sourcePacificDate \}\)/);
+	assert.match(stateUpdateSection, /UPDATE bookings SET[\s\S]*UPDATE booking_date_reservations[\s\S]*AND \$\{bookingMoved\}/);
+	assert.match(stateUpdateSection, /WHERE booking_id = \? AND pacific_date = \? AND released_at IS NULL[\s\S]*AND \$\{bookingMoved\}/);
 	assert.match(source, /releaseBookingDateReservations\(db, \{ bookingId, pacificDate: destinationPacificDate \}\)/);
+});
+
+test('direct reschedule adopts its own proposal hold and preserves date-conflict status', async () => {
+	const source = await readFile(new URL('../../src/routes/api/bookings/reschedule/+server.ts', import.meta.url), 'utf8');
+	const claimSection = source.slice(source.indexOf('const matchingProposalReservation'), source.indexOf('// Cancel old calendar event'));
+	const stateUpdateSection = source.slice(source.indexOf('const stateStatements'), source.indexOf('const stateResults'));
+	const calendarMutationCatchStart = source.indexOf('} catch (err: any) {', source.indexOf('newCalendarEventId = calendarEvent.id'));
+	const calendarMutationCatch = source.slice(calendarMutationCatchStart, source.indexOf('try {\n\t\t\tconst bookingMoved', calendarMutationCatchStart));
+
+	assert.match(claimSection, /FROM booking_date_reservations[\s\S]*JOIN reschedule_proposals[\s\S]*p\.booking_id = \?/);
+	assert.match(claimSection, /destinationPacificDate !== sourcePacificDate && !matchingProposalReservation[\s\S]*claimPacificDateReservation/);
+	assert.match(stateUpdateSection, /SET booking_id = \?, proposal_id = NULL, kind = 'booking'[\s\S]*proposal_id = \?/);
+	assert.match(calendarMutationCatch, /err\?\.status === 409[\s\S]*throw err/);
+});
+
+test('reschedules cancel the old calendar event only after the guarded booking commit', async () => {
+	const direct = await readFile(new URL('../../src/routes/api/bookings/reschedule/+server.ts', import.meta.url), 'utf8');
+	const response = await readFile(new URL('../../src/routes/reschedule-response/[token]/+page.server.ts', import.meta.url), 'utf8');
+	const acceptSection = response.slice(response.indexOf('accept: async'), response.indexOf('decline: async'));
+
+	const directCommit = direct.indexOf('const stateResults = await db.batch');
+	const directOldCancel = direct.indexOf('cancelCalendarEvent(accessToken, originalBooking.google_event_id)');
+	assert.ok(directCommit > 0 && directOldCancel > directCommit, 'direct reschedule must cancel the old event after commit');
+
+	const acceptCommit = acceptSection.indexOf('acceptResults = await db.batch');
+	const acceptOldCancel = acceptSection.indexOf('proposal.google_event_id)');
+	assert.ok(acceptCommit > 0 && acceptOldCancel > acceptCommit, 'accepted proposal must cancel the old event after commit');
+	assert.match(acceptSection, /acceptResults\[0\]\?\.meta\?\.changes === 0[\s\S]*proposalReservationClaimed[\s\S]*releaseBookingDateReservations\(db, \{ proposalId: proposal\.id \}\)/);
 });
 
 test('pending proposals hold destination dates and clean up failed proposal claims', async () => {
@@ -588,9 +621,16 @@ test('pending proposals hold destination dates and clean up failed proposal clai
 
 	assert.match(source, /assertStartInBookingWindow\(proposedStartTime\)/);
 	assert.match(source, /claimPacificDateReservation\(db, \{\s*userId: booking\.user_id,\s*pacificDate: destinationPacificDate,\s*proposalId,/s);
-	assert.match(source, /UPDATE bookings SET status = 'rescheduled'/);
+	assert.match(source, /UPDATE bookings\s+SET status = 'rescheduled'/);
 	assert.match(source, /releaseBookingDateReservations\(db, \{ proposalId \}\)/);
 	assert.match(source, /DELETE FROM reschedule_proposals WHERE id = \?/);
+});
+
+test('proposal creation cannot revive a canceled or changed booking', async () => {
+	const source = await readFile(new URL('../../src/routes/api/bookings/propose-reschedule/+server.ts', import.meta.url), 'utf8');
+
+	assert.match(source, /UPDATE bookings\s+SET status = 'rescheduled'\s+WHERE id = \? AND status = 'confirmed' AND start_time = \?/);
+	assert.match(source, /bookingUpdate\.meta\?\.changes !== 1[\s\S]*throw error\(409, 'Booking is no longer available to reschedule'\)/);
 });
 
 test('accepted proposals move the reservation and declined proposals keep source consumed', async () => {
@@ -599,8 +639,9 @@ test('accepted proposals move the reservation and declined proposals keep source
 	const declineSection = source.slice(source.indexOf('decline: async'));
 
 	assert.match(acceptSection, /assertStartInBookingWindow\(proposal\.proposed_start_time\)/);
-	assert.match(acceptSection, /transferProposalReservationToBooking\(db, \{/);
-	assert.match(acceptSection, /releaseBookingDateReservations\(db, \{\s*bookingId: proposal\.booking_id,\s*pacificDate: sourcePacificDate/s);
+	assert.match(acceptSection, /SET status = 'accepted'/);
+	assert.match(acceptSection, /SET booking_id = \?, proposal_id = NULL, kind = 'booking'/);
+	assert.match(acceptSection, /SET released_at = CURRENT_TIMESTAMP[\s\S]*WHERE booking_id = \? AND pacific_date = \?/);
 	assert.match(declineSection, /UPDATE bookings SET status = 'canceled'/);
 	assert.match(declineSection, /releaseBookingDateReservations\(db, \{ proposalId: proposal\.id \}\)/);
 	assert.doesNotMatch(declineSection, /pacificDate: sourcePacificDate/);
@@ -614,4 +655,138 @@ test('standalone cancellations do not release consumed Pacific dates', async () 
 	assert.doesNotMatch(attendeeCancel, /releaseBookingDateReservations/);
 	assert.match(dashboardCancel, /UPDATE bookings SET status = \?/);
 	assert.match(attendeeCancel, /UPDATE bookings SET status = \?/);
+});
+
+test('cancelling a booking closes pending proposals and releases only their destination holds', async () => {
+	const rulesSource = await readFile(new URL('../../src/lib/server/booking-rules.ts', import.meta.url), 'utf8');
+	const dashboardCancel = await readFile(new URL('../../src/routes/api/bookings/cancel/+server.ts', import.meta.url), 'utf8');
+	const attendeeCancel = await readFile(new URL('../../src/routes/cancel/[id]/+page.server.ts', import.meta.url), 'utf8');
+	const directReschedule = await readFile(new URL('../../src/routes/api/bookings/reschedule/+server.ts', import.meta.url), 'utf8');
+
+	assert.match(rulesSource, /export async function closePendingRescheduleProposals/);
+	assert.match(rulesSource, /UPDATE booking_date_reservations[\s\S]*proposal_id IN \(\s*SELECT id FROM reschedule_proposals/);
+	assert.match(dashboardCancel, /closePendingRescheduleProposals\(db, bookingId, 'expired'\)/);
+	assert.match(attendeeCancel, /closePendingRescheduleProposals\(db, bookingId, 'expired'\)/);
+	assert.match(directReschedule, /UPDATE booking_date_reservations[\s\S]*proposal_id IN \([\s\S]*UPDATE reschedule_proposals\s+SET status = 'counter_proposed'/);
+});
+
+test('expired proposal holds are released and legacy bookings stay in the date-cap check', async () => {
+	const rules = await import('../../src/lib/server/booking-rules.ts');
+	const statements = [];
+	const db = {
+		prepare(sql) {
+			return {
+				sql,
+				bind(...values) {
+					this.values = values;
+					return this;
+				},
+				async first() {
+					return /SELECT 1\s+FROM reschedule_proposals/.test(sql) ? { pending: 1 } : null;
+				}
+			};
+		},
+		async batch(queries) {
+			statements.push(...queries.map(query => ({ sql: query.sql, values: query.values || [] })));
+			return [];
+		}
+	};
+
+	await rules.expireStaleRescheduleProposals(db, 'user-1');
+	assert.equal(statements.length, 3);
+	assert.match(statements[0].sql, /UPDATE booking_date_reservations[\s\S]*proposal_id IN/);
+	assert.match(statements[1].sql, /UPDATE reschedule_proposals\s+SET status = 'expired'/);
+	assert.match(statements[2].sql, /UPDATE bookings\s+SET status = 'confirmed'/);
+
+	const legacyDb = {
+		prepare(sql) {
+			return {
+				bind() { return this; },
+				async first() { return null; },
+				async all() {
+					if (sql.includes('booking_date_reservations')) return { results: [] };
+					return { results: [
+						{ id: 'source-booking', start_time: '2030-01-10T07:30:00.000Z' },
+						{ id: 'legacy-booking', start_time: '2030-01-11T07:30:00.000Z' }
+					] };
+				}
+			};
+		},
+		async batch() { return []; }
+	};
+	const consumed = await rules.getConsumedPacificDates(legacyDb, 'user-1', {
+		excludeBookingId: 'source-booking',
+		excludeProposalId: 'proposal-1'
+	});
+	assert.deepEqual([...consumed].sort(), ['2030-01-10']);
+});
+
+test('proposal acceptance requires the original booking to remain pending and checks legacy date claims', async () => {
+	const source = await readFile(new URL('../../src/routes/reschedule-response/[token]/+page.server.ts', import.meta.url), 'utf8');
+	const acceptSection = source.slice(source.indexOf('accept: async'), source.indexOf('decline: async'));
+
+	assert.match(acceptSection, /booking_status/);
+	assert.match(acceptSection, /booking_status !== 'rescheduled'/);
+	assert.match(acceptSection, /isPacificDateConsumed\(db, proposal\.user_id, destinationPacificDate, \{\s*excludeBookingId: proposal\.booking_id,\s*excludeProposalId: proposal\.id/s);
+	assert.match(acceptSection, /proposal\.is_expired/);
+	assert.match(acceptSection, /catch[\s\S]*This time is outside the booking window/);
+});
+
+test('malformed successful Calendar responses are unverifiable, not free', async () => {
+	const google = await import('../../src/lib/server/google-calendar.ts');
+	let restore = installFetchMock(async () => jsonResponse({ calendars: { primary: {} } }));
+	await assert.rejects(
+		() => google.getBusyTimes('token', new Date('2030-01-01T00:00:00Z'), new Date('2030-01-02T00:00:00Z'), ['primary']),
+		/invalid FreeBusy busy intervals/i
+	);
+	restore();
+
+	restore = installFetchMock(async () => jsonResponse({ calendars: { primary: { busy: [{ start: 'not-a-date', end: '2030-01-01T01:00:00Z' }] } } }));
+	await assert.rejects(
+		() => google.getBusyTimes('token', new Date('2030-01-01T00:00:00Z'), new Date('2030-01-02T00:00:00Z'), ['primary']),
+		/invalid FreeBusy busy interval/i
+	);
+	restore();
+
+	restore = installFetchMock(async () => jsonResponse({ calendars: { primary: { errors: {}, busy: [] } } }));
+	await assert.rejects(
+		() => google.getBusyTimes('token', new Date('2030-01-01T00:00:00Z'), new Date('2030-01-02T00:00:00Z'), ['primary']),
+		/invalid FreeBusy calendar errors/i
+	);
+	restore();
+
+	restore = installFetchMock(async () => jsonResponse({}));
+	await assert.rejects(
+		() => google.getPrimaryCalendarEvents('token', new Date('2030-01-01T00:00:00Z'), new Date('2030-01-02T00:00:00Z')),
+		/invalid Events API response/i
+	);
+	restore();
+
+	const { getPrimaryBlackoutDates } = await import('../../src/lib/server/primary-calendar-blackouts.ts');
+	assert.throws(
+		() => getPrimaryBlackoutDates({
+			rulesByDate: new Map(),
+			events: [{ id: 'malformed', status: 'confirmed', start: {}, end: {} }]
+		}),
+		/unverifiable primary calendar event/i
+	);
+});
+
+test('availability routes use one request-start timestamp for exact booking-window boundaries', async () => {
+	const daySource = await readFile(new URL('../../src/routes/api/availability/+server.ts', import.meta.url), 'utf8');
+	const monthSource = await readFile(new URL('../../src/routes/api/availability/month/+server.ts', import.meta.url), 'utf8');
+
+	assert.match(daySource, /const requestStartedAt = new Date\(\)/);
+	assert.match(daySource, /filterSlotsToBookingWindow\([\s\S]*requestStartedAt/);
+	assert.match(monthSource, /const requestStartedAt = new Date\(\)/);
+	assert.match(monthSource, /getBookingWindow\(requestStartedAt\)/);
+	assert.match(monthSource, /filterSlotsToBookingWindow\([\s\S]*requestStartedAt/);
+});
+
+test('monthly selected-calendar queries cover Pacific month boundaries', async () => {
+	const monthSource = await readFile(new URL('../../src/routes/api/availability/month/+server.ts', import.meta.url), 'utf8');
+
+	assert.match(monthSource, /const pacificMonthStart = createDateInTimezone\([\s\S]*PACIFIC_TIMEZONE\)/);
+	assert.match(monthSource, /const pacificMonthEnd = createDateInTimezone\([\s\S]*PACIFIC_TIMEZONE\)/);
+	assert.match(monthSource, /getBusyTimes\(googleAccessToken, pacificMonthStart, pacificMonthEnd, selectedCalendars\)/);
 });
