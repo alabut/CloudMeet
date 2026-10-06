@@ -5,7 +5,11 @@ compatibility_date = "2024-01-01"
 [triggers]
 crons = ["*/5 * * * *"]
 
-# These will be set via wrangler secret:
-# wrangler secret put APP_URL
+# The public app address is not a secret. Keeping it here avoids a stale or
+# malformed secret silently breaking every cron call (Cloudflare error 1003).
+[vars]
+APP_URL = "https://schedule.alabut.com"
+
+# These are set via wrangler secret (the deploy workflow copies them from GitHub):
 # wrangler secret put CRON_SECRET
 # wrangler secret put HEALTHCHECK_URL   (optional; healthchecks.io ping URL)

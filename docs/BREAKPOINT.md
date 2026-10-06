@@ -69,6 +69,7 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 
 - Repository notes record the Healthchecks check for **CloudMeet cron** as Simple, period 1 day, grace 1 hour, email to `alabut@gmail.com`; live period, grace, and recipient settings have not been rechecked. The worker runs every 5 minutes, so align the watchdog period/grace with that cadence before calling monitoring complete.
 - `HEALTHCHECK_URL` is on GitHub Actions, the live `cloudmeet-cron` worker, and (via the deploy workflow) Cloudflare Pages production.
+- The cron worker's `APP_URL` is a plain var in `workers/cron-reminders/wrangler.toml` (`https://schedule.alabut.com`), not a secret. Until 2026-10-05 the worker's secret copy made every cron call return Cloudflare error 1003, so Healthchecks showed the check down for most of September and October.
 - Request-level Healthchecks pings additionally require the same secret in the Cloudflare Pages environment; this has not been verified.
 - Check went **Up**; Al received the test notification email.
 
