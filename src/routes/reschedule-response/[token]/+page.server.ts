@@ -605,6 +605,7 @@ export const actions: Actions = {
 				.run();
 
 			await releaseBookingDateReservations(db, { proposalId: proposal.id });
+			await releaseBookingDateReservations(db, { bookingId: proposal.booking_id });
 
 			if (env.EMAILIT_API_KEY) {
 				try {

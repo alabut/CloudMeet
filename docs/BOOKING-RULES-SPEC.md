@@ -2,7 +2,7 @@
 
 ## Human summary
 
-CloudMeet offers interviews only from 48 hours ahead through the following two weeks, allows at most one appointment per Pacific date, and treats a booked date as used even if the booking is canceled. Google Calendar’s primary calendar is the source for whole-day blackouts: an all-day event or any event overlapping availability blocks that entire date, including events marked Free.
+CloudMeet offers interviews only from 48 hours ahead through the following two weeks, allows at most one appointment per Pacific date, and reopens a date when its booking is canceled. Google Calendar’s primary calendar is the source for whole-day blackouts: an all-day event or any event overlapping availability blocks that entire date, including events marked Free.
 
 Calendar outages are visible to bookers, and the five-minute worker checks Google primary through the Events API read used for blackout detection. The live Healthchecks timing and request-level alert path still need verification. Host SMS on a new booking is a lower-priority reach goal.
 
@@ -22,13 +22,13 @@ The critical token-verification issue is closed after a passing run. The fail-cl
 
 - Use `America/Los_Angeles` for the host’s Pacific calendar date. Group by the appointment’s start date in that zone.
 - Permit at most one CloudMeet booking per host-local date across all bookers and event types.
-- Once a booking is accepted, keep that date unavailable for the rest of that date even if the attendee or host later cancels. Persist the reservation history so deleting the Google event or changing the booking status cannot reopen the date.
+- A confirmed booking keeps its date unavailable. If the attendee or host cancels it, release the date so someone else can book it. (AL reversed the earlier "canceled dates stay used" rule on 2026-10-05 after local testing.)
 - Enforce the cap at the database write boundary with `booking_date_reservations`: one active reservation per `(user_id, pacific_date)`, backed by a partial unique index where `released_at IS NULL`.
-- Preserve occupied dates from legacy booking rows, including canceled rows, by computing their Pacific start dates in application code. Do not rely on SQLite/D1 to calculate `America/Los_Angeles` dates from UTC strings.
-- A standalone host or attendee cancellation keeps its original date blocked.
+- Preserve occupied dates from legacy non-canceled booking rows by computing their Pacific start dates in application code. Do not rely on SQLite/D1 to calculate `America/Los_Angeles` dates from UTC strings.
+- A host or attendee cancellation, including an attendee declining a proposal (which cancels the booking), releases every reservation that booking holds.
 - A pending host reschedule proposal keeps the source date consumed and also reserves the proposed destination date while pending.
 - If the host cancels or directly reschedules a booking while proposals are pending, invalidate those proposals and release their destination holds. When a direct reschedule selects a date already held by one of that booking's proposals, transfer that active reservation to the booking instead of creating a duplicate claim.
-- A successful direct reschedule or accepted proposal moves the reservation to the destination date and releases the source only after the operation succeeds. A failed or declined proposal releases only the proposed destination and must not free the source.
+- A successful direct reschedule or accepted proposal moves the reservation to the destination date and releases the source only after the operation succeeds. A failed proposal releases only the proposed destination and must not free the source.
 
 ### Calendar conflicts and whole-day blackouts
 

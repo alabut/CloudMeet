@@ -502,7 +502,7 @@ test('date reservation uniqueness produces one same-date winner', async () => {
 	);
 });
 
-test('legacy canceled booking rows keep their Pacific date consumed', async () => {
+test('canceled legacy booking rows free their Pacific date; active rows keep it', async () => {
 	const { getConsumedPacificDates } = await import('../../src/lib/server/booking-rules.ts');
 	const db = {
 		prepare(sql) {
@@ -515,18 +515,16 @@ test('legacy canceled booking rows keep their Pacific date consumed', async () =
 				},
 				async all() {
 					if (sql.includes('booking_date_reservations')) return { results: [] };
-					return {
-						results: [
-							{ id: 'cancelled-booking', start_time: '2030-01-10T07:30:00.000Z' }
-						]
-					};
+					const active = { id: 'active-booking', start_time: '2030-01-12T18:00:00.000Z' };
+					const canceled = { id: 'cancelled-booking', start_time: '2030-01-10T07:30:00.000Z' };
+					return { results: /status\s*!=\s*'canceled'/.test(sql) ? [active] : [active, canceled] };
 				}
 			};
 		},
 		async batch() { return []; }
 	};
 
-	assert.deepEqual(await getConsumedPacificDates(db, 'user-1'), new Set(['2030-01-09']));
+	assert.deepEqual(await getConsumedPacificDates(db, 'user-1'), new Set(['2030-01-12']));
 });
 
 test('scheduled health probe uses the primary Events API read', async () => {
@@ -633,7 +631,7 @@ test('proposal creation cannot revive a canceled or changed booking', async () =
 	assert.match(source, /bookingUpdate\.meta\?\.changes !== 1[\s\S]*throw error\(409, 'Booking is no longer available to reschedule'\)/);
 });
 
-test('accepted proposals move the reservation and declined proposals keep source consumed', async () => {
+test('accepted proposals move the reservation and declined proposals release their destination hold', async () => {
 	const source = await readFile(new URL('../../src/routes/reschedule-response/[token]/+page.server.ts', import.meta.url), 'utf8');
 	const acceptSection = source.slice(source.indexOf('accept: async'), source.indexOf('decline: async'));
 	const declineSection = source.slice(source.indexOf('decline: async'));
@@ -647,14 +645,15 @@ test('accepted proposals move the reservation and declined proposals keep source
 	assert.doesNotMatch(declineSection, /pacificDate: sourcePacificDate/);
 });
 
-test('standalone cancellations do not release consumed Pacific dates', async () => {
+test('cancellations release the booking Pacific date', async () => {
 	const dashboardCancel = await readFile(new URL('../../src/routes/api/bookings/cancel/+server.ts', import.meta.url), 'utf8');
 	const attendeeCancel = await readFile(new URL('../../src/routes/cancel/[id]/+page.server.ts', import.meta.url), 'utf8');
+	const response = await readFile(new URL('../../src/routes/reschedule-response/[token]/+page.server.ts', import.meta.url), 'utf8');
+	const declineSection = response.slice(response.indexOf('decline: async'));
 
-	assert.doesNotMatch(dashboardCancel, /releaseBookingDateReservations/);
-	assert.doesNotMatch(attendeeCancel, /releaseBookingDateReservations/);
-	assert.match(dashboardCancel, /UPDATE bookings SET status = \?/);
-	assert.match(attendeeCancel, /UPDATE bookings SET status = \?/);
+	assert.match(dashboardCancel, /UPDATE bookings SET status = \?[\s\S]*releaseBookingDateReservations\(db, \{ bookingId \}\)/);
+	assert.match(attendeeCancel, /UPDATE bookings SET status = \?[\s\S]*releaseBookingDateReservations\(db, \{ bookingId \}\)/);
+	assert.match(declineSection, /UPDATE bookings SET status = 'canceled'[\s\S]*releaseBookingDateReservations\(db, \{ bookingId: proposal\.booking_id \}\)/);
 });
 
 test('cancelling a booking closes pending proposals and releases only their destination holds', async () => {

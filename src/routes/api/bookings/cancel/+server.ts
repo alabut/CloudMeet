@@ -9,7 +9,7 @@ import { cancelCalendarEvent, getValidAccessToken } from '$lib/server/google-cal
 import { cancelOutlookCalendarEvent, getValidOutlookAccessToken } from '$lib/server/outlook-calendar';
 import { sendCancellationEmail, getEmailTemplates, isEmailEnabled } from '$lib/server/email';
 import { invalidateAvailabilityCache } from '$lib/server/availability-cache';
-import { closePendingRescheduleProposals } from '$lib/server/booking-rules';
+import { closePendingRescheduleProposals, releaseBookingDateReservations } from '$lib/server/booking-rules';
 
 export const POST = async (event: RequestEvent) => {
 	const env = event.platform?.env;
@@ -119,6 +119,7 @@ export const POST = async (event: RequestEvent) => {
 			.bind('canceled', 'host', message || null, bookingId)
 			.run();
 		await closePendingRescheduleProposals(db, bookingId, 'expired');
+		await releaseBookingDateReservations(db, { bookingId });
 
 		// Cancel any scheduled reminder emails
 		await db

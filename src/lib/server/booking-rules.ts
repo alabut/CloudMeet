@@ -137,7 +137,7 @@ export async function getConsumedPacificDates(
 		.prepare(
 			`SELECT id, start_time
 			FROM bookings
-			WHERE user_id = ?`
+			WHERE user_id = ? AND status != 'canceled'`
 		)
 		.bind(userId)
 		.all<{ id: string; start_time: string }>();
@@ -317,6 +317,17 @@ export async function releaseBookingDateReservations(
 				WHERE proposal_id = ? AND released_at IS NULL`
 			)
 			.bind(params.proposalId)
+			.run();
+	}
+
+	if (params.bookingId && !params.pacificDate) {
+		await db
+			.prepare(
+				`UPDATE booking_date_reservations
+				SET released_at = CURRENT_TIMESTAMP
+				WHERE booking_id = ? AND released_at IS NULL`
+			)
+			.bind(params.bookingId)
 			.run();
 	}
 }

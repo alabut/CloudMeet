@@ -6,7 +6,7 @@ import { error, redirect, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { cancelCalendarEvent, getValidAccessToken } from '$lib/server/google-calendar';
 import { sendCancellationEmail, sendAdminCancellationNotification, getEmailTemplates, isEmailEnabled } from '$lib/server/email';
-import { closePendingRescheduleProposals } from '$lib/server/booking-rules';
+import { closePendingRescheduleProposals, releaseBookingDateReservations } from '$lib/server/booking-rules';
 import {
 	getCancelPreviewBooking,
 	isLocalPreviewBooking,
@@ -144,6 +144,7 @@ export const actions: Actions = {
 				.bind('canceled', 'attendee', reason, bookingId)
 				.run();
 			await closePendingRescheduleProposals(db, bookingId, 'expired');
+			await releaseBookingDateReservations(db, { bookingId });
 
 			// Cancel any scheduled reminder emails
 			await db
