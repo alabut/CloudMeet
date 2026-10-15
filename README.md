@@ -4,7 +4,7 @@ AL’s scheduling app is a fork of [CloudMeet](https://github.com/dennisklappe/C
 
 The current operating decisions are in [docs/BREAKPOINT.md](docs/BREAKPOINT.md): guest notifications come from calendar invitations, and Emailit is not enabled for V1. A guest’s own calendar controls reminders. The original upstream template’s Google Meet and branded-email setup does not describe this deployment.
 
-Track active bugs, features, and improvements in [GitHub Issues](https://github.com/alabut/CloudMeet/issues). The old Markdown lists preserve history. No Trello or GitHub Projects board is used. Production currently builds before publishing; an automated test gate is still pending in [issue #8](https://github.com/alabut/CloudMeet/issues/8).
+Track active bugs, features, and improvements in [GitHub Issues](https://github.com/alabut/CloudMeet/issues). The old Markdown lists preserve history. No Trello or GitHub Projects board is used. Releases must pass calendar regressions, a production build, and local browser behavior checks before publishing. Failed checks leave the current deployment running.
 
 ## Machine-readable notes
 
@@ -13,6 +13,8 @@ Track active bugs, features, and improvements in [GitHub Issues](https://github.
 - [docs/DESIGN.md](docs/DESIGN.md) holds the design contract; [docs/STYLE-MAP.md](docs/STYLE-MAP.md) points to public-booking implementation files.
 - `npm run dev` builds and runs the local Cloudflare Pages preview. `npm run dev:watch` starts Vite for UI iteration; it is a different runtime surface. Use existing working dependencies and local configuration.
 - `npm run build` builds the app; `npm run check:dashboard` and `npm run test:visual` are available checks in `package.json`. Run checks appropriate to the affected code rather than creating real bookings for verification.
+- `npm run release:check` runs all regression tests, builds, and runs Playwright behavior checks at phone/desktop widths in both themes using loopback preview fixtures. It needs no Google login or production data. Install the locked Playwright Chromium browser if absent; CI installs it automatically. Screenshot comparisons stay separate because existing baselines were captured on macOS. The old `check:dashboard` script reads local credentials and is not part of this gate.
+- GitHub pull requests run the secret-free gate; deployment depends on that job passing. A manual workflow run defaults to `verify_only: true`. An explicitly authorized release may dispatch on `main` with `verify_only: false`; normal main pushes still deploy after passing checks. `npm run deploy` enforces the same checks locally. Legacy upstream-sync workflows have been removed rather than left as ungated release paths.
 - `.github/workflows/verify-cloudflare-access.yml` is a manual read-only credential check. It uses GitHub Actions secrets to confirm the token is active and can read the existing Pages project and cron settings; it never prints the secret or deploys. Read access does not prove every write permission.
 - A push to `main` normally triggers `.github/workflows/deploy.yml`, deploying Pages and the cron worker. For verified documentation-only housekeeping, a commit message containing `[skip ci]` skips GitHub push workflows, allowing documentation to reach `main` without deployment. Never use this for application, test, or deployment-code changes.
 - Do not provision OAuth clients, enable mail providers, refresh upstream/dependencies, or change production settings as documentation housekeeping.

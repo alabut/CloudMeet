@@ -1,19 +1,19 @@
-# CloudMeet breakpoint — updated 2026-10-05
+# CloudMeet breakpoint — updated 2026-10-15
 
-The app remains deployed. [GitHub Issues](https://github.com/alabut/CloudMeet/issues) now owns the active backlog; the old bug and tweak documents preserve history. Booking-policy decisions are captured in [BOOKING-RULES-SPEC.md](BOOKING-RULES-SPEC.md), feature #11. Critical token verification passed and issue #7 is closed. Calendar fail-closed bug #10 and booking-rules feature #11 are implemented locally on `fix/calendar-fails-closed`; they still need review/merge/deploy planning. Host SMS is a lower-priority reach goal in issue #12. No production settings changed.
+The app is deployed. Token rotation (#7), calendar reliability (#10), and booking rules (#11) are resolved. AL tested booking and cancellation in production. [GitHub Issues](https://github.com/alabut/CloudMeet/issues) owns the optional backlog. Host SMS (#12) is parked; AL decided email is sufficient. This closeout adds a release test gate and corrects old notes; it changes no product behavior.
 
 ## Machine-readable notes
 
 - No unchecked application bugs were found in the historical lists. This is a backlog review, not a new end-to-end acceptance test.
-- Production test gating remains open in [issue #8](https://github.com/alabut/CloudMeet/issues/8).
+- Releases require regression tests, a build, and loopback browser behavior checks. GitHub's production job depends on the secret-free verification job. Failures leave the existing deployment running. Manual runs default to verification only. Evidence belongs in [issue #8](https://github.com/alabut/CloudMeet/issues/8).
 - AL classified the historical token exposure as critical in [issue #7](https://github.com/alabut/CloudMeet/issues/7). AL reported completing Cloudflare Roll and updating the GitHub deployment secret; verification run [37370894615](https://github.com/alabut/CloudMeet/actions/runs/37370894615) passed on 2026-10-05 and the issue is closed. The check verifies token access to deployment resources; it does not probe the old token or prove write/deployment access. Never print token values.
 - Documentation-only publication may use `[skip ci]` to avoid the push-to-main deployment; application changes must not use it.
 
-V1 remains deployed. Public booking design, dashboard functional/visual work, Zoom invites, Google OAuth in production, and the cron watchdog are on `main`. Issue #8 tracks the missing production test gate. Issues #10 and #11 are implemented locally on `fix/calendar-fails-closed`; the booking-policy spec is recorded separately.
+Public booking design, dashboard work, Zoom invites, Google OAuth, calendar failure handling, booking rules and the cron watchdog are on `main`. Current policy lives in [BOOKING-RULES-SPEC.md](BOOKING-RULES-SPEC.md). Numbered handoffs stay historical; do not execute their superseded pending-work lists.
 
 Live: https://schedule.alabut.com  
 Repo: `/Users/alabut/Developer/CloudMeet` (`origin` = `alabut/CloudMeet`)  
-The app code on `main` last deployed successfully from `0df8fa6` on 2026-09-09 Pacific time. Later documentation commits do not imply a new application deployment.
+The latest product deployment at this closeout is `2bd29f1`, [run 37416164966](https://github.com/alabut/CloudMeet/actions/runs/37416164966), on October 5 Pacific time. Migration `0009` was applied before the booking-rules deployment; do not repeat it.
 
 ---
 
@@ -24,7 +24,7 @@ Coming back to **this Cursor conversation** is fine. Long threads get summarized
 - **Infra / Google / cron / Emailit / healthchecks** → this chat (or a new chat that is told to read this file first).
 - **Design system practice / further polish** → optional; see `docs/collaboration/001-design-engineering-practice.md`. Public + dashboard design already landed on `main`.
 
-Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actions `deploy.yml`). That is intentional now. Older docs that say “deploy is manual / Actions will create the wrong D1” are **stale**.
+Push to `main` **auto-deploys after release checks pass** (GitHub Actions `deploy.yml`). Pull requests and manual `verify_only: true` runs test without production access. Legacy upstream-sync workflows have been retired.
 
 ---
 
@@ -65,13 +65,12 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 
 ---
 
-## Watchdog status (done 2026-09-06)
+## Watchdog status (verified 2026-10-05)
 
-- Repository notes record the Healthchecks check for **CloudMeet cron** as Simple, period 1 day, grace 1 hour, email to `alabut@gmail.com`; live period, grace, and recipient settings have not been rechecked. The worker runs every 5 minutes, so align the watchdog period/grace with that cadence before calling monitoring complete.
+- [Issue #10](https://github.com/alabut/CloudMeet/issues/10) records AL-approved Healthchecks settings: period five minutes, grace ten minutes, email alerts to AL. These are dated results, not a new assertion of uninterrupted live health.
 - `HEALTHCHECK_URL` is on GitHub Actions, the live `cloudmeet-cron` worker, and (via the deploy workflow) Cloudflare Pages production.
 - The cron worker's `APP_URL` is a plain var in `workers/cron-reminders/wrangler.toml` (`https://schedule.alabut.com`), not a secret. Until 2026-10-05 the worker's secret copy made every cron call return Cloudflare error 1003, so Healthchecks showed the check down for most of September and October.
-- Request-level Healthchecks pings additionally require the same secret in the Cloudflare Pages environment; this has not been verified.
-- Check went **Up**; Al received the test notification email.
+- Pages secret presence was confirmed by name. The first healthy cron tick after the app-address fix restored the check, and AL received the recovery email.
 
 ## Since then (merged, 2026-09-06 → 2026-09-09)
 
@@ -81,15 +80,14 @@ Push to `main` **auto-deploys** Cloudflare Pages + the cron worker (GitHub Actio
 
 ## Recommended next
 
-1. Review and merge the local issue #10/#11 calendar reliability and booking-rules work on `fix/calendar-fails-closed`.
-2. Keep [issue #8](https://github.com/alabut/CloudMeet/issues/8), the automated production test gate, in view before any production release; deploy planning must include migration `0009`.
-3. Investigate [issue #12](https://github.com/alabut/CloudMeet/issues/12), the optional host SMS alert, after the core booking rules ship.
+Use the app. Do not reopen #7, #10 or #11 based on old local handoffs. New symptoms belong in GitHub Issues. Release-gate verification evidence belongs in #8. SMS (#12) stays parked unless AL changes direction.
 
 Other optional product improvements:
 
 1. Hide cancelled bookings: [issue #5](https://github.com/alabut/CloudMeet/issues/5).
 2. Optional reminder emails: [issue #4](https://github.com/alabut/CloudMeet/issues/4). Google Calendar invitations stay the guest path. Do not enable Emailit.
 3. Rename GCP project: [issue #6](https://github.com/alabut/CloudMeet/issues/6).
+4. Reassess the old availability-cache improvement: [issue #9](https://github.com/alabut/CloudMeet/issues/9). The public day/month path stopped serving KV responses in #11; verify a current problem before changing caching.
 
 Security follow-up: [issue #7](https://github.com/alabut/CloudMeet/issues/7) is closed after the replacement-token verification passed and AL reported Cloudflare Roll. The check does not probe the old secret.
 

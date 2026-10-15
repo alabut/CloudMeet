@@ -4,9 +4,9 @@
 
 CloudMeet offers interviews only from 48 hours ahead through the following two weeks, allows at most one appointment per Pacific date, and reopens a date when its booking is canceled. Google Calendar’s primary calendar is the source for whole-day blackouts: an all-day event or any event overlapping availability blocks that entire date, including events marked Free.
 
-Calendar outages are visible to bookers, and the five-minute worker checks Google primary through the Events API read used for blackout detection. The live Healthchecks timing and request-level alert path still need verification. Host SMS on a new booking is a lower-priority reach goal.
+Calendar outages are visible to bookers, and the five-minute worker checks Google primary through the Events API read used for blackout detection. Monitoring configuration and the alert path were verified on October 5. Host SMS is parked; AL decided email notifications are sufficient for now.
 
-The critical token-verification issue is closed after a passing run. The fail-closed calendar bug in issue #10 is implemented locally: Google Calendar verification failures no longer become empty/free availability. Issue #11 is implemented locally with a D1 date-reservation table and application-level Pacific date computation for legacy rows. The production deployment test gate in issue #8 remains open. A successful reschedule releases its original date only after the destination is reserved and the booking update succeeds.
+The token-verification issue is closed after a passing run. Calendar reliability (#10) and booking rules (#11) shipped on October 5 and are closed. AL confirmed booking removes a date and cancellation reopens it. A successful reschedule releases its original date only after the destination is reserved and the booking update succeeds. Releases now require the automated test gate described in the README; issue #8 holds its verification evidence.
 
 ## Machine-readable notes
 
@@ -46,10 +46,9 @@ The critical token-verification issue is closed after a passing run. The fail-cl
 - The public booking page shows a distinct temporary-unavailable state for calendar outages, separate from normal empty-day/month copy.
 - The existing five-minute cron probe performs a real authenticated Events API read of Google primary after refreshing access; refreshing the OAuth token alone is not sufficient evidence of calendar access.
 - Send a Healthchecks.io failure signal when the scheduled primary-calendar read fails. Public availability and booking-submission Google read failures also call the configured `HEALTHCHECK_URL` `/fail` URL, so transient failures do not depend on the next probe.
-- Request-level pings only reach Healthchecks when `HEALTHCHECK_URL` is present in the Pages environment. The repository deploy workflow currently documents this secret for `cloudmeet-cron`; verify the Pages setting before relying on request-level pings.
+- Request-level pings require `HEALTHCHECK_URL` in Pages. Issue #10 records its presence by name and deployment of the workflow step that copies it from GitHub before publishing Pages (commit `2f2ae59`).
 - On scheduled recovery, the five-minute worker sends a normal success signal and clears the host-facing warning state.
-- The repository records the existing Healthchecks.io alert email as `alabut@gmail.com`. Its documented period was one day with a one-hour grace period; verify the live setting and align it with the five-minute worker cadence before calling monitoring complete.
-- Live Healthchecks period, grace, and recipient settings remain unverified unless the repo can prove them. The application does not call the Healthchecks API to configure account settings.
+- Issue #10 records verified Healthchecks settings of period five minutes and grace ten minutes, with email alerts to AL. The worker's app address was corrected in `2bd29f1`; the next tick reported calendar health and the recovery email arrived. These are dated operational results, not evidence of uninterrupted health since then.
 - The dashboard’s current token warning is useful but only runs when the dashboard is loaded; it does not replace scheduled checks and host alerts.
 
 ### Email and SMS
@@ -61,6 +60,6 @@ The critical token-verification issue is closed after a passing run. The fail-cl
 ### Existing blockers and evidence
 
 - Issue #7 is closed after verification run [37370894615](https://github.com/alabut/CloudMeet/actions/runs/37370894615) passed “Verify token and deployment resource access” on 2026-10-05. AL had reported completing Cloudflare Roll and updating the GitHub deployment secret. No deployment was performed.
-- Bug [#10](https://github.com/alabut/CloudMeet/issues/10) and feature [#11](https://github.com/alabut/CloudMeet/issues/11) are implemented locally on `fix/calendar-fails-closed` and remain under review. Issue #10 also needs live Pages `HEALTHCHECK_URL` and Healthchecks.io timing/recipient verification; issue #11 is not deployed and requires migration `0009`.
+- Bug [#10](https://github.com/alabut/CloudMeet/issues/10) and feature [#11](https://github.com/alabut/CloudMeet/issues/11) are deployed and closed. Deployment [37414524497](https://github.com/alabut/CloudMeet/actions/runs/37414524497) shipped `ff4f00f`, with migration `0009` applied beforehand. Subsequent deployments shipped monitoring fixes `2f2ae59` and `2bd29f1`. Issue comments record AL's production acceptance and monitoring evidence.
 - Host SMS is a lower-priority reach goal tracked separately in [#12](https://github.com/alabut/CloudMeet/issues/12).
-- The automated production deployment gate remains tracked in [#8](https://github.com/alabut/CloudMeet/issues/8). Do not deploy this feature without that gate or an explicit release decision.
+- Release-gate evidence is tracked in [#8](https://github.com/alabut/CloudMeet/issues/8). Regression tests, the production build, and loopback browser behavior checks must pass before deployment; do not bypass the gate.
