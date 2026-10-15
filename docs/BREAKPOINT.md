@@ -87,7 +87,8 @@ Other optional product improvements:
 1. Hide cancelled bookings: [issue #5](https://github.com/alabut/CloudMeet/issues/5).
 2. Optional reminder emails: [issue #4](https://github.com/alabut/CloudMeet/issues/4). Google Calendar invitations stay the guest path. Do not enable Emailit.
 3. Rename GCP project: [issue #6](https://github.com/alabut/CloudMeet/issues/6).
-4. Reassess the old availability-cache improvement: [issue #9](https://github.com/alabut/CloudMeet/issues/9). The public day/month path stopped serving KV responses in #11; verify a current problem before changing caching.
+
+The old availability-cache item [#9](https://github.com/alabut/CloudMeet/issues/9) is closed as superseded: the public day/month endpoints no longer serve cached responses after #11. Report any new symptom separately rather than redesigning an unused cache path.
 
 Security follow-up: [issue #7](https://github.com/alabut/CloudMeet/issues/7) is closed after the replacement-token verification passed and AL reported Cloudflare Roll. The check does not probe the old secret.
 
