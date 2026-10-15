@@ -70,15 +70,7 @@ Not configured for this deployment: Outlook host sync and transactional email. D
 
 ## 6. Cron worker — deployed; reminder email sends deferred
 
-The cron worker is deployed by GitHub Actions and provides health monitoring. No transactional email provider is configured, so reminder sends remain deferred in [issue #4](https://github.com/alabut/CloudMeet/issues/4). Do not enable Emailit. The following commands are historical manual deployment reference, not housekeeping instructions:
-
-```bash
-cd workers/cron-reminders
-npx wrangler deploy
-echo "https://schedule.alabut.com" | npx wrangler secret put APP_URL
-echo "<your CRON_SECRET value>" | npx wrangler secret put CRON_SECRET
-cd ../..
-```
+The cron worker is deployed through the gated GitHub workflow and provides health monitoring. No transactional email provider is configured, so reminder sends remain deferred in [issue #4](https://github.com/alabut/CloudMeet/issues/4). Do not enable Emailit. Its `APP_URL` is a plain var in the worker's `wrangler.toml`; do not recreate the old secret override that previously broke health checks. The workflow maintains the separate cron and watchdog secrets.
 
 ## 7. Custom domain: schedule.alabut.com — live
 
