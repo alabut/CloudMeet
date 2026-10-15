@@ -5,6 +5,7 @@ import { parse } from 'yaml';
 
 const workflow = parse(readFileSync(new URL('../../.github/workflows/deploy.yml', import.meta.url), 'utf8'));
 const scripts = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).scripts;
+const playwrightConfig = readFileSync(new URL('../../playwright.config.ts', import.meta.url), 'utf8');
 
 test('every production publish waits for successful verification', () => {
 	assert.equal(workflow.jobs.deploy.needs, 'verify');
@@ -40,4 +41,8 @@ test('legacy upstream deploy and sync workflows cannot bypass reviewed releases'
 test('the local deployment command stops if release checks fail', () => {
 	assert.match(scripts.deploy, /^npm run release:check && wrangler pages deploy /);
 	assert.equal(scripts['release:check'], 'npm run test:regression && npm run build && npm run test:behavior');
+});
+
+test('the browser check waits on a route that works without local D1 data', () => {
+	assert.match(playwrightConfig, /url:\s*`\$\{baseURL\}\/privacy`/);
 });
