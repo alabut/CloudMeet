@@ -1,4 +1,5 @@
 - **BREAKPOINT.md** — Current pause: infra vs design, Google/Zoom/cron status, what to do next. **Start here** if a chat was compacted.
+- **BOOKING-RULES-SPEC.md** — Current booking policy and the shipped calendar reliability behavior. Numbered collaboration handoffs are immutable historical snapshots; their old pending-work lists do not override this spec or current GitHub issue evidence.
 - **BOOKING-RULES-SPEC.md** — Confirmed booking window, daily cap, primary-calendar blackout, failure monitoring, and SMS reach goal.
 - **SETUP-NOTES.md** — Log of setup deviations, assumptions, and what's been verified live
 - **STYLE-MAP.md** — Anchor comments marking the files to restyle by hand

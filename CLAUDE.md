@@ -4,7 +4,7 @@ Al is outcome-focused. Do not teach him agent orchestration, ask him to choose r
 
 Read and follow @docs/ORCHESTRATION.md before substantial design or implementation work.
 
-Read @AGENTS.md for the current GitHub Issues tracker and zero-known-bugs rules. GitHub Issues is the active backlog; docs/BUGS.md and docs/TWEAKS.md are history. Check open critical, bug, and unclassified issues before features. The automated deployment test gate remains pending in issue #8.
+Read @AGENTS.md for the current GitHub Issues tracker and zero-known-bugs rules. GitHub Issues is the active backlog; docs/BUGS.md and docs/TWEAKS.md are history. Check open critical, bug, and unclassified issues before features. Deployment requires the regression, build, and local browser gate described there; do not bypass it.
 
 Core rules:
 

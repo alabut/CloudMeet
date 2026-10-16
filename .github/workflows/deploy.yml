@@ -6,10 +6,46 @@ name: Deploy to Cloudflare Pages
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
+    inputs:
+      verify_only:
+        description: 'Run checks without deploying (safe default)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
 
 jobs:
+  verify:
+    name: Release checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Regression tests
+        run: npm run test:regression
+      - name: Production build
+        run: npm run build
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Local browser behavior checks
+        env:
+          PLAYWRIGHT_HTML_OPEN: never
+        run: npm run test:behavior
+
   deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && inputs.verify_only != true
     runs-on: ubuntu-latest
     permissions:
       contents: read

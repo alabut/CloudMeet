@@ -1,6 +1,6 @@
 # Bugs — historical record
 
-As of 2026-10-05, [GitHub Issues](https://github.com/alabut/CloudMeet/issues) is the active tracker. All historical checkboxes below are completed; no unchecked application bug was migrated. The accepted cache mitigation has an optional follow-up in [issue #9](https://github.com/alabut/CloudMeet/issues/9).
+As of 2026-10-05, [GitHub Issues](https://github.com/alabut/CloudMeet/issues) is the active tracker. All historical checkboxes below are completed; no unchecked application bug was migrated. The cache follow-up [#9](https://github.com/alabut/CloudMeet/issues/9) was closed as superseded on October 15: the shipped booking rules removed the public day/month cache path.
 
 ## Machine-readable notes
 

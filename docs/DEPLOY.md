@@ -2,13 +2,15 @@
 
 **Status: deployed and live as of 2026-08-21.** Live at **https://schedule.alabut.com** (also reachable at the underlying `https://cloudmeet-5y6.pages.dev`). This doc now doubles as a record of what was run and a reference for redeploying after future changes.
 
-## 1. Production build
+## Machine-readable notes
+
+## 1. Release checks
 
 ```bash
-npm run build
+npm run release:check
 ```
 
-Output goes to `.svelte-kit/cloudflare` (SvelteKit + `@sveltejs/adapter-cloudflare`), which is what `wrangler.toml`'s `pages_build_output_dir` points at. Passes cleanly.
+This runs regressions, a build, and loopback browser behavior checks. Failed checks stop publication. Output goes to `.svelte-kit/cloudflare`. Screenshot comparisons remain separate because the current baselines were generated on macOS. Browser fixtures require no OAuth or production database.
 
 ## 2. Cloudflare Pages project
 
@@ -20,16 +22,15 @@ npx wrangler pages project create cloudmeet --production-branch=main
 
 **Note:** the project name you request isn't necessarily your `.pages.dev` subdomain — Cloudflare assigned `cloudmeet-5y6.pages.dev` here (likely a collision with an existing `cloudmeet.pages.dev` elsewhere on Cloudflare). Always check the actual output of the `create`/`deploy` command rather than assuming `<project-name>.pages.dev`.
 
-Deployed with:
+For an explicitly authorized local Pages release, use the gated command:
 
 ```bash
-npm run build
-npx wrangler pages deploy .svelte-kit/cloudflare --project-name=cloudmeet
+npm run deploy -- --project-name=cloudmeet
 ```
 
-This reads the D1/KV bindings straight from `wrangler.toml` — no dashboard binding step needed. Re-run this same command any time you want to ship a new version; it reuses the existing project.
+This runs release checks before publishing and reads bindings from `wrangler.toml`. It deploys Pages only; the GitHub workflow also deploys the cron worker. Do not replace it with a bare Wrangler command to bypass checks.
 
-Current deployment uses `.github/workflows/deploy.yml` on pushes to `main`: it builds and deploys Pages plus the cron worker, using existing Cloudflare configuration. Documentation-only commits containing `[skip ci]` skip push workflows. The automated test gate is still pending in [issue #8](https://github.com/alabut/CloudMeet/issues/8). Do not run the legacy Upstream Sync or Sync and Deploy workflows; they import upstream changes and the latter also changes production configuration.
+GitHub `.github/workflows/deploy.yml` runs secret-free release checks for pull requests, pushes to `main`, and manual runs. Production requires the verification job to succeed and only publishes from `main`. Manual dispatch defaults to `verify_only: true`; an authorized release uses `verify_only: false`. A failed check marks the run failed and leaves the existing Cloudflare deployment serving. This prevents publishing unverified code; it does not automatically roll back an already-published runtime failure. The legacy upstream-sync workflows have been removed. See [issue #8](https://github.com/alabut/CloudMeet/issues/8) for evidence.
 
 ## 3. Production bindings
 
@@ -48,14 +49,7 @@ id = "7938d855d8824edea85202d9b5107743"
 
 ## 4. Schema + migrations on production D1
 
-Applied once already through migration `0008`. Re-run the migrations loop any time `schema.sql` or `migrations/` changes. The next authorized deploy after issue #11 must apply `migrations/0009_booking_date_reservations.sql`; this task intentionally did not run remote D1 commands.
-
-```bash
-npx wrangler d1 execute cloudmeet --remote --file=./schema.sql
-for m in migrations/*.sql; do
-  npx wrangler d1 execute cloudmeet --remote --file="$m"
-done
-```
+Applied through migration `0009` before the October 5 booking-rules release; issue #11 records the operation. No migration is needed for this closeout. Future schema changes need a reviewed migration and release plan. Do not blindly replay the schema and every migration on production.
 
 Several migration files report "duplicate column" errors on a fresh apply — expected, see `SETUP-NOTES.md`; `schema.sql` already includes most of what they add. Migration `0009` adds `booking_date_reservations` and a partial unique active-date index. It intentionally does not backfill legacy booking rows in SQL because D1/SQLite cannot safely derive `America/Los_Angeles` dates from UTC strings; application code preserves those occupied dates.
 
@@ -76,15 +70,7 @@ Not configured for this deployment: Outlook host sync and transactional email. D
 
 ## 6. Cron worker — deployed; reminder email sends deferred
 
-The cron worker is deployed by GitHub Actions and provides health monitoring. No transactional email provider is configured, so reminder sends remain deferred in [issue #4](https://github.com/alabut/CloudMeet/issues/4). Do not enable Emailit. The following commands are historical manual deployment reference, not housekeeping instructions:
-
-```bash
-cd workers/cron-reminders
-npx wrangler deploy
-echo "https://schedule.alabut.com" | npx wrangler secret put APP_URL
-echo "<your CRON_SECRET value>" | npx wrangler secret put CRON_SECRET
-cd ../..
-```
+The cron worker is deployed through the gated GitHub workflow and provides health monitoring. No transactional email provider is configured, so reminder sends remain deferred in [issue #4](https://github.com/alabut/CloudMeet/issues/4). Do not enable Emailit. Its `APP_URL` is a plain var in the worker's `wrangler.toml`; do not recreate the old secret override that previously broke health checks. The workflow maintains the separate cron and watchdog secrets.
 
 ## 7. Custom domain: schedule.alabut.com — live
 

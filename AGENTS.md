@@ -8,7 +8,7 @@ Core rules:
 
 - GitHub Issues at https://github.com/alabut/CloudMeet/issues is the sole active backlog. Use `critical`, `bug`, `feature`, `improvement`, or `unclassified`; no Trello or GitHub Projects. `docs/BUGS.md` and `docs/TWEAKS.md` are historical records.
 - Apply AL's zero-known-bugs rule: critical issues stop work; broken promised behavior is a bug and precedes features; livable changes are improvements. Write a failing regression test before fixing a bug. Check open critical, bug, and unclassified issues before new feature work; do not quietly downgrade them.
-- The production test gate is not yet implemented: track it in issue #8. A passing build alone does not establish release safety. Never run the legacy upstream-sync workflows as routine maintenance.
+- Releases require regression tests, a production build, and local Playwright behavior checks to pass. GitHub's deploy job depends on its secret-free verification job; a failure keeps the current deployment serving. Manual workflow runs default to verification only. Use `npm run release:check` locally; `npm run deploy` also enforces it. Do not bypass the gate. Legacy upstream-sync workflows are retired. See issue #8 for evidence.
 
 - Keep the primary Codex agent focused on understanding Al's intent, routing, supervision, integration, and final verification.
 - Automatically dispatch coding and implementation work to Cursor Composer 2.5 according to `docs/ORCHESTRATION.md`. Al does not need to request dispatch or choose the provider or model.

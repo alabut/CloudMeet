@@ -29,7 +29,9 @@ export default defineConfig({
 	},
 	webServer: {
 		command: `npm run dev -- --port ${port}`,
-		url: baseURL,
+		// The root redirects to the database-backed booking page; wait on a route
+		// that is healthy in a fresh runner with an empty local D1 database.
+		url: `${baseURL}/privacy`,
 		reuseExistingServer: !process.env.CI,
 		timeout: 180_000,
 		stdout: 'pipe',
