@@ -1,4 +1,4 @@
-# CloudMeet breakpoint — updated 2026-10-15
+# CloudMeet breakpoint — updated 2026-10-16
 
 The app is deployed. Token rotation (#7), calendar reliability (#10), and booking rules (#11) are resolved. AL tested booking and cancellation in production. [GitHub Issues](https://github.com/alabut/CloudMeet/issues) owns the optional backlog. Host SMS (#12) is parked; AL decided email is sufficient. This closeout adds a release test gate and corrects old notes; it changes no product behavior.
 
@@ -13,7 +13,7 @@ Public booking design, dashboard work, Zoom invites, Google OAuth, calendar fail
 
 Live: https://schedule.alabut.com  
 Repo: `/Users/alabut/Developer/CloudMeet` (`origin` = `alabut/CloudMeet`)  
-The latest product deployment at this closeout is `2bd29f1`, [run 37416164966](https://github.com/alabut/CloudMeet/actions/runs/37416164966), on October 5 Pacific time. Migration `0009` was applied before the booking-rules deployment; do not repeat it.
+The closeout deployed `c2a04b4` on October 16: [run 38931747428](https://github.com/alabut/CloudMeet/actions/runs/38931747428) passed release checks before publishing Pages and the cron worker. Post-release booking and privacy pages returned HTTP 200. The earlier deliberate-failure [run 38812587100](https://github.com/alabut/CloudMeet/actions/runs/38812587100) skipped deployment, proving the failure path. Issues #8 and #14 are resolved; #14 repaired database-free loopback previews, with regression coverage preserving production loading. Migration `0009` was already applied before the October 5 booking-rules deployment; do not repeat it.
 
 ---
 
