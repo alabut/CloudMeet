@@ -6,8 +6,33 @@
 
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { getReschedulePreviewBooking, isLoopbackHost } from '$lib/preview/sampleBooking';
 
-export const load: PageServerLoad = async ({ params, platform }) => {
+export const load: PageServerLoad = async ({ params, platform, url }) => {
+	const preview = url.searchParams.get('preview');
+	if (params.slug === '30min' && isLoopbackHost(url.hostname) && (preview === 'success' || preview === 'details')) {
+		const sample = getReschedulePreviewBooking();
+		return {
+			slug: sample.eventSlug,
+			eventType: {
+				id: 'preview-event',
+				name: sample.eventName,
+				slug: sample.eventSlug,
+				duration: sample.duration,
+				description: sample.description,
+				is_active: 1,
+				cover_image: sample.coverImage,
+				invite_calendar: sample.inviteCalendar
+			},
+			user: {
+				name: sample.hostName,
+				profileImage: sample.profileImage,
+				brandColor: sample.brandColor,
+				timeFormat: '12h'
+			}
+		};
+	}
+
 	const env = platform?.env;
 	if (!env) {
 		throw error(500, 'Platform env not available');

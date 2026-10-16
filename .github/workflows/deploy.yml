@@ -39,6 +39,8 @@ jobs:
       - name: Install test browser
         run: npx playwright install --with-deps chromium
       - name: Local browser behavior checks
+        env:
+          PLAYWRIGHT_HTML_OPEN: never
         run: npm run test:behavior
 
   deploy:

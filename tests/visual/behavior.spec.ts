@@ -11,9 +11,10 @@ test.beforeEach(async ({ page }) => {
 	await prepareVisualPage(page);
 });
 
-test('root redirects to /30min', async ({ page }) => {
-	await page.goto('/', { waitUntil: 'domcontentloaded' });
-	await expect(page).toHaveURL(/\/30min$/);
+test('root redirects to /30min', async ({ request }) => {
+	const response = await request.get('/', { maxRedirects: 0 });
+	expect(response.status()).toBe(302);
+	expect(response.headers().location).toBe('/30min');
 });
 
 test('preview pages have no horizontal overflow', async ({ page }) => {

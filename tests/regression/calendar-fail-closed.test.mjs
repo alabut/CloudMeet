@@ -45,6 +45,19 @@ function jsonResponse(body, init = {}) {
 	});
 }
 
+test('local booking previews load without a database and never bypass production loading', async () => {
+	const { load } = await loadRoute('/src/routes/[slug]/+page.server.ts');
+	for (const preview of ['success', 'details']) {
+		const data = await load({ params: { slug: '30min' }, url: new URL(`http://127.0.0.1/30min?preview=${preview}`) });
+		assert.equal(data.eventType.name, '30-minute conversation');
+		assert.equal(data.eventType.duration, 30);
+	}
+	for (const href of ['https://schedule.alabut.com/30min?preview=success', 'http://127.0.0.1/30min', 'http://127.0.0.1/30min?preview=unknown']) {
+		await assert.rejects(() => load({ params: { slug: '30min' }, url: new URL(href) }), (error) => error.status === 500);
+	}
+	await assert.rejects(() => load({ params: { slug: 'other' }, url: new URL('http://localhost/other?preview=success') }), (error) => error.status === 500);
+});
+
 function textResponse(body, init = {}) {
 	return new Response(body, { status: init.status ?? 200 });
 }
